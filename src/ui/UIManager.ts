@@ -45,8 +45,8 @@ export class UIManager {
         this.mainMenu = document.createElement('div');
         this.mainMenu.className = 'main-menu hidden';
         this.mainMenu.innerHTML = `
-            <h1>ROGUE SURVIVORS</h1>
-            <p class="subtitle">Political Bullet Hell</p>
+            <h1>DUSK OF DEMOCRACY</h1>
+            <p class="subtitle">When Democracy Falls, Chaos Rises</p>
         `;
 
         const playBtn = document.createElement('button');

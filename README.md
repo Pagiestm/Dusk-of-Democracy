@@ -1,4 +1,4 @@
-# Rogue Survivors
+# Dusk of Democracy
 
 Un rogue-like / bullet hell 3D inspir par Vampire Survivors et Megabonk, construit avec **PlayCanvas Engine** en full code (pas d'diteur).
 

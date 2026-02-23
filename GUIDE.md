@@ -1,10 +1,10 @@
-# Rogue Survivors -- Guide du jeu
+# Dusk of Democracy -- Guide du jeu
 
 ---
 
 ## Concept
 
-Rogue Survivors est un **bullet hell / rogue-like** en 3D vue du dessus. Tu incarnes un personnage politique satirique et tu dois survivre le plus longtemps possible face a des vagues d'ennemis de plus en plus nombreux et puissants.
+Dusk of Democracy est un **bullet hell / rogue-like** en 3D vue du dessus. Tu incarnes un personnage politique satirique et tu dois survivre le plus longtemps possible face a des vagues d'ennemis de plus en plus nombreux et puissants.
 
 Inspire par **Vampire Survivors** et **Megabonk**.
 

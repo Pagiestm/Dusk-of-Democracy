@@ -43,4 +43,4 @@ app.start();
 const game = new Game(app);
 game.init();
 
-console.log('Rogue Survivors initialized!');
+console.log('Dusk of Democracy initialized!');
