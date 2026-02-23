@@ -46,29 +46,36 @@ export class Health extends pc.Script {
     }
 
     private flashDamage(): void {
-        // Brief color flash
-        const renders = this.entity.render;
-        if (renders) {
-            const meshInstances = renders.meshInstances;
-            const originalMaterials = meshInstances.map(mi => mi.material);
-
-            const flashMat = new pc.StandardMaterial();
-            flashMat.diffuse = new pc.Color(1, 0.2, 0.2);
-            flashMat.emissive = new pc.Color(0.5, 0, 0);
-            flashMat.update();
-
-            for (const mi of meshInstances) {
-                mi.material = flashMat;
+        // Collect mesh instances from this entity AND all descendants (GLB models
+        // attach render components on child entities, not the root player entity).
+        const meshInstances: pc.MeshInstance[] = [];
+        this.entity.forEach((node: pc.GraphNode) => {
+            const e = node as pc.Entity;
+            if (e.render && e.render.meshInstances.length > 0) {
+                meshInstances.push(...e.render.meshInstances);
             }
+        });
 
-            setTimeout(() => {
-                meshInstances.forEach((mi, i) => {
-                    if (originalMaterials[i]) {
-                        mi.material = originalMaterials[i];
-                    }
-                });
-            }, 100);
+        if (meshInstances.length === 0) return;
+
+        const originalMaterials = meshInstances.map(mi => mi.material);
+
+        const flashMat = new pc.StandardMaterial();
+        flashMat.diffuse = new pc.Color(0.8, 0.1, 0.1);
+        flashMat.emissive = new pc.Color(0.15, 0, 0);
+        flashMat.update();
+
+        for (const mi of meshInstances) {
+            mi.material = flashMat;
         }
+
+        setTimeout(() => {
+            meshInstances.forEach((mi, i) => {
+                if (originalMaterials[i]) {
+                    mi.material = originalMaterials[i];
+                }
+            });
+        }, 100);
     }
 
     private die(): void {
