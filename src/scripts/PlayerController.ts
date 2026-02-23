@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { PLAYER_BASE_SPEED, ARENA_HALF } from '../constants';
+import { PLAYER_BASE_SPEED, ARENA_HALF, GameState } from '../constants';
 
 export class PlayerController extends pc.Script {
     static scriptName = 'playerController';
@@ -10,7 +10,7 @@ export class PlayerController extends pc.Script {
 
     update(dt: number): void {
         const game = (this.app as any).__game;
-        if (!game) return;
+        if (!game || game.state !== GameState.PLAYING) return;
 
         const input = game.inputManager.getState();
 

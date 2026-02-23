@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas';
+import { GameState } from '../constants';
 
 export class Projectile extends pc.Script {
     static scriptName = 'projectile';
@@ -11,6 +12,9 @@ export class Projectile extends pc.Script {
     private age: number = 0;
 
     update(dt: number): void {
+        const game = (this.app as any).__game;
+        if (game && game.state !== GameState.PLAYING) return;
+
         this.age += dt;
 
         if (this.age >= this.lifetime) {

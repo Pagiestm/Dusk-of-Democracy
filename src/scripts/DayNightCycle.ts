@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { DAY_CYCLE_DURATION } from '../constants';
+import { DAY_CYCLE_DURATION, GameState } from '../constants';
 
 export class DayNightCycle extends pc.Script {
     static scriptName = 'dayNightCycle';
@@ -14,7 +14,7 @@ export class DayNightCycle extends pc.Script {
 
     update(dt: number): void {
         const game = (this.app as any).__game;
-        if (!game || game.state !== 'playing') return;
+        if (!game || game.state !== GameState.PLAYING) return;
 
         this.timeOfDay = (this.timeOfDay + dt / this.cycleDuration) % 1.0;
 

@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { XP_PICKUP_MAGNET_SPEED } from '../constants';
+import { XP_PICKUP_MAGNET_SPEED, GameState } from '../constants';
 
 export class XPPickup extends pc.Script {
     static scriptName = 'xpPickup';
@@ -13,6 +13,9 @@ export class XPPickup extends pc.Script {
     }
 
     update(dt: number): void {
+        const game = (this.app as any).__game;
+        if (game && game.state !== GameState.PLAYING) return;
+
         const player = this.app.root.findByName('player');
         if (!player) return;
 
@@ -23,7 +26,6 @@ export class XPPickup extends pc.Script {
         const dist = Math.sqrt(dx * dx + dz * dz);
 
         // Get magnet radius from game
-        const game = (this.app as any).__game;
         const magnetRadius = game?.playerStats?.magnetRadius ?? 3;
 
         if (dist < magnetRadius) {
