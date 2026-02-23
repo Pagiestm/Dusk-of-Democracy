@@ -12,6 +12,7 @@ export class WaveSystem {
     private waveTimer: number = 0;
     private spawnQueue: EnemyDef[] = [];
     private enemyDefMap: Map<string, EnemyDef>;
+    private cycle: number = 0; // nombre de fois qu'on a bouclé les 6 waves
 
     currentWave: number = 1;
     totalEnemiesAlive: number = 0;
@@ -33,12 +34,12 @@ export class WaveSystem {
 
     update(dt: number): void {
         if (this.waveIndex >= WAVES.length) {
-            // Loop waves with scaling
             this.waveIndex = 0;
+            this.cycle++;
         }
 
         const waveDef = WAVES[this.waveIndex];
-        this.currentWave = waveDef.wave;
+        this.currentWave = this.cycle * WAVES.length + waveDef.wave;
 
         // Advance wave timer
         this.waveTimer += dt;
@@ -51,7 +52,8 @@ export class WaveSystem {
         // Spawn enemies on interval
         const nightFactor = (this.app as any).__nightFactor || 0;
         const spawnMultiplier = 1 + nightFactor * (NIGHT_SPAWN_MULTIPLIER - 1);
-        const adjustedInterval = waveDef.spawnInterval / spawnMultiplier;
+        const cycleIntervalMult = this.getSpawnIntervalMultiplier();
+        const adjustedInterval = (waveDef.spawnInterval * cycleIntervalMult) / spawnMultiplier;
 
         this.spawnTimer += dt;
         if (this.spawnTimer >= adjustedInterval && this.spawnQueue.length > 0) {
@@ -68,11 +70,23 @@ export class WaveSystem {
         }
     }
 
+    /** Multiplicateur de quantite d'ennemis selon le cycle */
+    private getCountMultiplier(): number {
+        return 1 + this.cycle * 0.5; // +50% d'ennemis par cycle
+    }
+
+    /** Multiplicateur de vitesse d'intervalle selon le cycle */
+    private getSpawnIntervalMultiplier(): number {
+        return Math.max(0.3, 1 - this.cycle * 0.1); // -10% par cycle, min 30%
+    }
+
     private fillSpawnQueue(waveDef: WaveDef): void {
+        const countMult = this.getCountMultiplier();
         for (const group of waveDef.enemies) {
             const def = this.enemyDefMap.get(group.enemyId);
             if (!def) continue;
-            for (let i = 0; i < group.count; i++) {
+            const scaledCount = Math.ceil(group.count * countMult);
+            for (let i = 0; i < scaledCount; i++) {
                 this.spawnQueue.push(def);
             }
         }
@@ -103,10 +117,18 @@ export class WaveSystem {
 
         const spawnPos = new pc.Vec3(x, 0, z);
 
-        // Apply night speed bonus
+        // Apply night speed bonus + cycle scaling
         const nightFactor = (this.app as any).__nightFactor || 0;
         const nightSpeedBonus = 1 + nightFactor * 0.2;
-        const modifiedDef = { ...def, speed: def.speed * nightSpeedBonus };
+        const cycleHpMult = 1 + this.cycle * 0.3;    // +30% HP par cycle
+        const cycleDmgMult = 1 + this.cycle * 0.2;   // +20% degats par cycle
+        const cycleSpeedMult = 1 + this.cycle * 0.05; // +5% vitesse par cycle
+        const modifiedDef = {
+            ...def,
+            speed: def.speed * nightSpeedBonus * cycleSpeedMult,
+            hp: Math.ceil(def.hp * cycleHpMult),
+            damage: Math.ceil(def.damage * cycleDmgMult),
+        };
 
         createEnemy(this.app, modifiedDef, spawnPos);
         this.totalEnemiesAlive++;
@@ -114,6 +136,7 @@ export class WaveSystem {
 
     reset(): void {
         this.waveIndex = 0;
+        this.cycle = 0;
         this.spawnTimer = 0;
         this.waveTimer = 0;
         this.spawnQueue = [];
