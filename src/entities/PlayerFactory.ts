@@ -52,6 +52,18 @@ export function createPlayer(app: pc.Application, characterDef: CharacterDef): p
     entity.setPosition(0, 0.5, 0);
     entity.setLocalScale(0.8, 0.8, 0.8);
 
+    // Lumière ponctuelle autour du joueur (s'allume la nuit via DayNightCycle)
+    const torch = new pc.Entity('player_torch');
+    torch.addComponent('light', {
+        type: 'omni',
+        color: new pc.Color(1.0, 0.85, 0.5),  // lumière chaude / torche
+        intensity: 0,                            // éteinte de jour
+        range: 8,
+        castShadows: false,
+    });
+    torch.setLocalPosition(0, 1.2, 0);
+    entity.addChild(torch);
+
     app.root.addChild(entity);
     return entity;
 }

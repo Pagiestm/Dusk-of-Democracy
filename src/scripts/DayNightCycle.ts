@@ -80,6 +80,13 @@ export class DayNightCycle extends pc.Script {
             light.color     = sunColor;
             light.intensity = pc.math.lerp(1.5, 0.35, nf);
         }
+
+        // Torche du joueur : s'allume progressivement dès le crépuscule
+        const torch = this.app.root.findByName('player_torch') as pc.Entity | null;
+        const torchLight = (torch as pc.Entity | null)?.light;
+        if (torchLight) {
+            torchLight.intensity = pc.math.lerp(0, 3.0, nf);
+        }
     }
 
     // -------------------------------------------------------
