@@ -44,9 +44,9 @@ export class InputManager {
         let mx = 0;
         let mz = 0;
 
-        if (this.keyboard.isPressed(pc.KEY_W) || this.keyboard.isPressed(pc.KEY_UP)) mz -= 1;
+        if (this.keyboard.isPressed(pc.KEY_Z) || this.keyboard.isPressed(pc.KEY_UP)) mz -= 1;
         if (this.keyboard.isPressed(pc.KEY_S) || this.keyboard.isPressed(pc.KEY_DOWN)) mz += 1;
-        if (this.keyboard.isPressed(pc.KEY_A) || this.keyboard.isPressed(pc.KEY_LEFT)) mx -= 1;
+        if (this.keyboard.isPressed(pc.KEY_Q) || this.keyboard.isPressed(pc.KEY_LEFT)) mx -= 1;
         if (this.keyboard.isPressed(pc.KEY_D) || this.keyboard.isPressed(pc.KEY_RIGHT)) mx += 1;
 
         // Gamepad
