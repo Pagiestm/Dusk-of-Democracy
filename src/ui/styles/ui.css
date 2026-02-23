@@ -286,7 +286,100 @@
 .pause-screen h2 {
     font-size: 48px;
     color: #fff;
+    margin-bottom: 10px;
+}
+
+/* === Shop in Pause === */
+.shop-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
     margin-bottom: 20px;
+}
+
+.shop-title {
+    font-size: 20px;
+    color: #f7c948;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.shop-gold {
+    font-size: 16px;
+    color: #f7c948;
+}
+
+.shop-grid {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.shop-item {
+    width: 170px;
+    padding: 16px 14px;
+    border: 2px solid #555;
+    background: rgba(20, 20, 30, 0.95);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.shop-item:hover {
+    border-color: #f7c948;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(247, 201, 72, 0.25);
+}
+
+.shop-item-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.shop-item-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.shop-item-desc {
+    font-size: 12px;
+    color: #aaa;
+}
+
+.shop-item-cost {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f7c948;
+    margin-top: 4px;
+}
+
+/* === Wave End Screen === */
+.wave-end-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.75);
+    gap: 20px;
+}
+
+.wave-end-screen h2 {
+    font-size: 42px;
+    color: #4caf50;
+    text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
 }
 
 /* === Game Over === */

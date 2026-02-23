@@ -116,6 +116,13 @@ export class Game {
             }
         });
 
+        // Wave complete — show shop
+        this.app.on('wave:complete', (_waveIndex: number) => {
+            if (this.state === GameState.PLAYING) {
+                this.setState(GameState.WAVE_END);
+            }
+        });
+
         // Player died
         this.app.on('player:died', () => {
             this.setState(GameState.GAME_OVER);
@@ -200,6 +207,28 @@ export class Game {
         this.setState(GameState.PLAYING);
     }
 
+    buyItem(itemId: string): boolean {
+        const success = this.shopSystem.buy(itemId, this.playerStats);
+        if (success && this.playerEntity?.script) {
+            // Apply stat changes to scripts
+            const controller = this.playerEntity.script.get('playerController') as any;
+            if (controller) controller.speed = this.playerStats.speed;
+
+            const health = this.playerEntity.script.get('health') as any;
+            if (health) {
+                health.maxHp = this.playerStats.maxHp;
+                health.hp = this.playerStats.hp;
+            }
+        }
+        return success;
+    }
+
+    continueToNextWave(): void {
+        if (this.state === GameState.WAVE_END) {
+            this.setState(GameState.PLAYING);
+        }
+    }
+
     pauseGame(): void {
         if (this.state === GameState.PLAYING) {
             this.setState(GameState.PAUSED);
@@ -241,7 +270,7 @@ export class Game {
             // Update HUD
             this.uiManager.updateHUD();
 
-        } else if (this.state === GameState.PAUSED || this.state === GameState.LEVEL_UP) {
+        } else if (this.state === GameState.PAUSED || this.state === GameState.LEVEL_UP || this.state === GameState.WAVE_END) {
             // Still poll input for unpause
             this.inputManager.update(this.playerEntity, this.cameraEntity);
             if (this.state === GameState.PAUSED && this.inputManager.getState().pause) {
