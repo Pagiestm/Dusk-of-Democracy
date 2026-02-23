@@ -6,13 +6,36 @@ import { Health } from '../scripts/Health';
 export function createPlayer(app: pc.Application, characterDef: CharacterDef): pc.Entity {
     const entity = new pc.Entity('player');
 
-    // Render: colored capsule (placeholder until 3D models)
-    entity.addComponent('render', { type: 'capsule' });
-    const mat = new pc.StandardMaterial();
-    mat.diffuse = characterDef.color;
-    mat.update();
-    for (const mi of entity.render!.meshInstances) {
-        mi.material = mat;
+    if (characterDef.modelPath) {
+        // Load GLB container asset
+        const containerAsset = new pc.Asset(
+            `${characterDef.id}_model`,
+            'container',
+            { url: characterDef.modelPath }
+        );
+
+        app.assets.add(containerAsset);
+
+        containerAsset.ready((asset: pc.Asset) => {
+            const resource = asset.resource as pc.ContainerResource;
+            const modelEntity = resource.instantiateRenderEntity();
+
+            // GLB is exported at centimeter scale (FBX origin), scale down to game units
+            modelEntity.setLocalScale(0.01, 0.01, 0.01);
+
+            entity.addChild(modelEntity);
+        });
+
+        app.assets.load(containerAsset);
+    } else {
+        // Fallback: colored capsule placeholder
+        entity.addComponent('render', { type: 'capsule' });
+        const mat = new pc.StandardMaterial();
+        mat.diffuse = characterDef.color;
+        mat.update();
+        for (const mi of entity.render!.meshInstances) {
+            mi.material = mat;
+        }
     }
 
     // Script components
