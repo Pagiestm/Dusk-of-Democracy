@@ -14,7 +14,11 @@ export class UIManager {
     private hud: HTMLElement | null = null;
     private levelUpScreen: HTMLElement | null = null;
     private pauseScreen: HTMLElement | null = null;
+    private waveEndScreen: HTMLElement | null = null;
     private gameOverScreen: HTMLElement | null = null;
+
+    // Shop state
+    private hasBoughtThisWave: boolean = false;
 
     // HUD elements
     private hpBar: HTMLElement | null = null;
@@ -41,6 +45,7 @@ export class UIManager {
         this.createHUD();
         this.createLevelUpScreen();
         this.createPauseScreen();
+        this.createWaveEndScreen();
         this.createGameOverScreen();
     }
 
@@ -322,6 +327,72 @@ export class UIManager {
         this.root.appendChild(this.pauseScreen);
     }
 
+    // === Wave End Screen (Boutique) ===
+    private createWaveEndScreen(): void {
+        this.waveEndScreen = document.createElement('div');
+        this.waveEndScreen.className = 'wave-end-screen hidden';
+        this.root.appendChild(this.waveEndScreen);
+    }
+
+    private showWaveEndShop(): void {
+        if (!this.waveEndScreen) return;
+        this.waveEndScreen.innerHTML = '';
+
+        const title = document.createElement('h2');
+        title.textContent = `VAGUE ${this.game.getWave()} TERMINEE !`;
+        this.waveEndScreen.appendChild(title);
+
+        // === Boutique ===
+        const shopSection = document.createElement('div');
+        shopSection.className = 'shop-section';
+
+        const shopTitle = document.createElement('h3');
+        shopTitle.className = 'shop-title';
+        shopTitle.textContent = 'BOUTIQUE';
+        shopSection.appendChild(shopTitle);
+
+        const goldLabel = document.createElement('div');
+        goldLabel.className = 'shop-gold';
+        goldLabel.textContent = `Or disponible : ${this.game.getGold()}`;
+        shopSection.appendChild(goldLabel);
+
+        const shopGrid = document.createElement('div');
+        shopGrid.className = 'shop-grid';
+
+        for (const item of this.game.shopSystem.getItems()) {
+            const card = document.createElement('div');
+            const canBuy = this.game.shopSystem.canBuy(item.id) && !this.hasBoughtThisWave;
+            card.className = `shop-item ${canBuy ? '' : 'shop-item-disabled'}`;
+
+            card.innerHTML = `
+                <div class="shop-item-name">${item.name}</div>
+                <div class="shop-item-desc">${item.description}</div>
+                <div class="shop-item-cost">${item.cost} Or</div>
+            `;
+
+            if (canBuy && !this.hasBoughtThisWave) {
+                card.onclick = () => {
+                    if (this.game.buyItem(item.id)) {
+                        this.hasBoughtThisWave = true;
+                        this.game.continueToNextWave();
+                    }
+                };
+            }
+
+            shopGrid.appendChild(card);
+        }
+
+        shopSection.appendChild(shopGrid);
+        this.waveEndScreen.appendChild(shopSection);
+
+        // Bouton vague suivante
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn';
+        nextBtn.textContent = 'VAGUE SUIVANTE';
+        nextBtn.onclick = () => this.game.continueToNextWave();
+        this.waveEndScreen.appendChild(nextBtn);
+    }
+
     // === Game Over ===
     private createGameOverScreen(): void {
         this.gameOverScreen = document.createElement('div');
@@ -371,6 +442,7 @@ export class UIManager {
         this.hud?.classList.add('hidden');
         this.levelUpScreen?.classList.add('hidden');
         this.pauseScreen?.classList.add('hidden');
+        this.waveEndScreen?.classList.add('hidden');
         this.gameOverScreen?.classList.add('hidden');
 
         // Show appropriate screen
@@ -391,6 +463,12 @@ export class UIManager {
             case GameState.PAUSED:
                 this.hud?.classList.remove('hidden');
                 this.pauseScreen?.classList.remove('hidden');
+                break;
+            case GameState.WAVE_END:
+                this.hud?.classList.remove('hidden');
+                this.hasBoughtThisWave = false;
+                this.showWaveEndShop();
+                this.waveEndScreen?.classList.remove('hidden');
                 break;
             case GameState.LEVEL_UP:
                 this.hud?.classList.remove('hidden');

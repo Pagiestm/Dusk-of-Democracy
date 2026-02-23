@@ -51,6 +51,7 @@ export enum GameState {
     PLAYING = 'playing',
     PAUSED = 'paused',
     LEVEL_UP = 'level_up',
+    WAVE_END = 'wave_end',
     GAME_OVER = 'game_over',
 }
 
