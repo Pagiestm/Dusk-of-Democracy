@@ -161,6 +161,7 @@ export class Game {
             cooldownMultiplier: 1,
             magnetRadius: PLAYER_MAGNET_RADIUS,
             armor: 0,
+            maxArmor: 0,
             projectileCount: 0,
         };
 
@@ -318,7 +319,7 @@ export class Game {
             const projScript = a.script?.get('projectile') as any;
             const healthScript = b.script?.get('health') as any;
             if (projScript && healthScript) {
-                healthScript.takeDamage(projScript.damage, 0);
+                healthScript.takeDamage(projScript.damage, false);
                 // Destroy projectile
                 this.collisionSystem.unregister(a);
                 a.destroy();
@@ -330,7 +331,26 @@ export class Game {
             const enemyAI = a.script?.get('enemyAI') as EnemyAI | undefined;
             const playerHealth = b.script?.get('health') as Health | undefined;
             if (enemyAI && playerHealth && enemyAI.canDealContactDamage()) {
-                playerHealth.takeDamage(enemyAI.contactDamage, this.playerStats.armor);
+                let damage = enemyAI.contactDamage;
+                let armorHit = false;
+
+                // L'armure absorbe les degats en premier
+                if (this.playerStats.armor > 0) {
+                    armorHit = true;
+                    if (this.playerStats.armor >= damage) {
+                        // Armure absorbe tout
+                        this.playerStats.armor -= damage;
+                        this.app.fire('damage:dealt', b, damage, true);
+                        enemyAI.resetContactCooldown();
+                        return; // pas de degat sur les PV
+                    } else {
+                        // Armure absorbe partiellement
+                        damage -= this.playerStats.armor;
+                        this.playerStats.armor = 0;
+                    }
+                }
+
+                playerHealth.takeDamage(damage, armorHit);
                 enemyAI.resetContactCooldown();
 
                 // Update stats
@@ -389,6 +409,7 @@ export class Game {
             cooldownMultiplier: 1,
             magnetRadius: PLAYER_MAGNET_RADIUS,
             armor: 0,
+            maxArmor: 0,
             projectileCount: 0,
         };
     }
@@ -401,5 +422,7 @@ export class Game {
     getWave(): number { return this.waveSystem.currentWave; }
     getGameTime(): number { return this.gameTime; }
     getKillCount(): number { return this.killCount; }
+    getArmor(): number { return this.playerStats.armor; }
+    getMaxArmor(): number { return this.playerStats.maxArmor; }
     getGold(): number { return this.shopSystem.gold; }
 }

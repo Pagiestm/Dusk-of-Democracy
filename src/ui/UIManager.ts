@@ -1,3 +1,4 @@
+import * as pc from 'playcanvas';
 import { GameState } from '../constants';
 import { CHARACTERS } from '../data/characters';
 import { WEAPONS } from '../data/weapons';
@@ -21,6 +22,9 @@ export class UIManager {
     private hasBoughtThisWave: boolean = false;
 
     // HUD elements
+    private armorBar: HTMLElement | null = null;
+    private armorLabel: HTMLElement | null = null;
+    private armorContainer: HTMLElement | null = null;
     private hpBar: HTMLElement | null = null;
     private hpLabel: HTMLElement | null = null;
     private xpBar: HTMLElement | null = null;
@@ -36,6 +40,7 @@ export class UIManager {
         this.game = game;
         this.root = document.getElementById('ui-root')!;
         this.createScreens();
+        this.setupFloatingDamage();
     }
 
     private createScreens(): void {
@@ -220,6 +225,20 @@ export class UIManager {
         this.hpLabel.textContent = '100/100';
         hpContainer.appendChild(this.hpLabel);
         left.appendChild(hpContainer);
+
+        // Armor Bar
+        this.armorContainer = document.createElement('div');
+        this.armorContainer.className = 'bar-container armor-bar';
+        this.armorContainer.style.display = 'none';
+        this.armorBar = document.createElement('div');
+        this.armorBar.className = 'bar-fill';
+        this.armorBar.style.width = '0%';
+        this.armorContainer.appendChild(this.armorBar);
+        this.armorLabel = document.createElement('div');
+        this.armorLabel.className = 'bar-label';
+        this.armorLabel.textContent = '0';
+        this.armorContainer.appendChild(this.armorLabel);
+        left.appendChild(this.armorContainer);
 
         // XP Bar
         const xpContainer = document.createElement('div');
@@ -491,6 +510,18 @@ export class UIManager {
         if (this.hpLabel) {
             this.hpLabel.textContent = `${Math.ceil(this.game.getHP())}/${this.game.getMaxHP()}`;
         }
+        if (this.armorContainer && this.armorBar && this.armorLabel) {
+            const armor = this.game.getArmor();
+            const maxArmor = this.game.getMaxArmor();
+            if (armor > 0 && maxArmor > 0) {
+                this.armorContainer.style.display = 'block';
+                const pct = (armor / maxArmor) * 100;
+                this.armorBar.style.width = `${pct}%`;
+                this.armorLabel.textContent = `${Math.ceil(armor)}/${maxArmor}`;
+            } else {
+                this.armorContainer.style.display = 'none';
+            }
+        }
         if (this.xpBar) {
             this.xpBar.style.width = `${this.game.getXPProgress() * 100}%`;
         }
@@ -536,5 +567,58 @@ export class UIManager {
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    // === Floating Damage Text ===
+    private setupFloatingDamage(): void {
+        const app = this.game.app;
+
+        app.on('damage:dealt', (entity: any, damage: number, armorAbsorbed: boolean) => {
+            if (!entity || !entity.getPosition) return;
+
+            const cameraNode = app.root.findByName('camera') as pc.Entity | null;
+            if (!cameraNode || !cameraNode.camera) return;
+
+            const worldPos = entity.getPosition();
+            // Petit offset vertical pour que le texte apparaisse au dessus
+            const screenPos = cameraNode.camera.worldToScreen(new pc.Vec3(worldPos.x, worldPos.y + 1.5, worldPos.z));
+
+            if (screenPos.z < 0) return; // derriere la camera
+
+            const color = armorAbsorbed ? '#6688cc' : '#ff4444';
+            const text = `-${damage}`;
+
+            this.spawnFloatingText(text, screenPos.x, screenPos.y, color);
+        });
+    }
+
+    private spawnFloatingText(text: string, x: number, y: number, color: string): void {
+        const el = document.createElement('div');
+        el.className = 'floating-damage';
+        el.textContent = text;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.color = color;
+        this.root.appendChild(el);
+
+        // Animer vers le haut + fade out
+        let elapsed = 0;
+        const duration = 800;
+        const startY = y;
+
+        const animate = () => {
+            elapsed += 16;
+            const progress = elapsed / duration;
+            el.style.top = `${startY - progress * 50}px`;
+            el.style.opacity = `${1 - progress}`;
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                el.remove();
+            }
+        };
+
+        requestAnimationFrame(animate);
     }
 }

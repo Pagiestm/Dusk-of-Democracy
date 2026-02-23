@@ -35,9 +35,9 @@ export class ShopSystem {
         {
             id: 'armor_plate',
             name: 'Plaque de Blindage',
-            description: '+10 Armure',
+            description: '+30 Bouclier',
             baseCost: 150,
-            apply: (stats) => { stats.armor += 10; },
+            apply: (stats) => { stats.armor += 30; stats.maxArmor += 30; },
         },
     ];
 

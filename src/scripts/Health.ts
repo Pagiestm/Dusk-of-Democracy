@@ -22,18 +22,17 @@ export class Health extends pc.Script {
         }
     }
 
-    takeDamage(amount: number, armor: number = 0): void {
+    takeDamage(amount: number, armorHit: boolean = false): void {
         if (this.invulnTimer > 0) return;
 
-        const finalDamage = Math.max(1, amount - armor);
-        this.hp -= finalDamage;
+        this.hp -= amount;
 
         if (this.invulnDuration > 0) {
             this.invulnTimer = this.invulnDuration;
         }
 
-        // Flash red effect
-        this.flashDamage();
+        this.flashDamage(armorHit);
+        this.app.fire('damage:dealt', this.entity, amount, armorHit);
 
         if (this.hp <= 0) {
             this.hp = 0;
@@ -45,9 +44,8 @@ export class Health extends pc.Script {
         this.hp = Math.min(this.hp + amount, this.maxHp);
     }
 
-    private flashDamage(): void {
-        // Collect mesh instances from this entity AND all descendants (GLB models
-        // attach render components on child entities, not the root player entity).
+    private flashDamage(armorAbsorbed: boolean): void {
+        // Collect mesh instances from this entity AND all descendants
         const meshInstances: pc.MeshInstance[] = [];
         this.entity.forEach((node: pc.GraphNode) => {
             const e = node as pc.Entity;
@@ -61,8 +59,15 @@ export class Health extends pc.Script {
         const originalMaterials = meshInstances.map(mi => mi.material);
 
         const flashMat = new pc.StandardMaterial();
-        flashMat.diffuse = new pc.Color(0.8, 0.1, 0.1);
-        flashMat.emissive = new pc.Color(0.15, 0, 0);
+        if (armorAbsorbed) {
+            // Flash bleu/gris pour armure
+            flashMat.diffuse = new pc.Color(0.3, 0.4, 0.8);
+            flashMat.emissive = new pc.Color(0.05, 0.1, 0.3);
+        } else {
+            // Flash rouge classique
+            flashMat.diffuse = new pc.Color(0.8, 0.1, 0.1);
+            flashMat.emissive = new pc.Color(0.15, 0, 0);
+        }
         flashMat.update();
 
         for (const mi of meshInstances) {
