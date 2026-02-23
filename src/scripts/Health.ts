@@ -1,4 +1,5 @@
 import * as pc from 'playcanvas';
+import { GameState } from '../constants';
 
 export class Health extends pc.Script {
     static scriptName = 'health';
@@ -13,6 +14,9 @@ export class Health extends pc.Script {
     }
 
     update(dt: number): void {
+        const game = (this.app as any).__game;
+        if (game && game.state !== GameState.PLAYING) return;
+
         if (this.invulnTimer > 0) {
             this.invulnTimer -= dt;
         }

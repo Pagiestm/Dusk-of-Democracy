@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { ENEMY_CONTACT_COOLDOWN } from '../constants';
+import { ENEMY_CONTACT_COOLDOWN, GameState } from '../constants';
 
 export class EnemyAI extends pc.Script {
     static scriptName = 'enemyAI';
@@ -10,6 +10,9 @@ export class EnemyAI extends pc.Script {
     private dir: pc.Vec3 = new pc.Vec3();
 
     update(dt: number): void {
+        const game = (this.app as any).__game;
+        if (game && game.state !== GameState.PLAYING) return;
+
         const player = this.app.root.findByName('player');
         if (!player) return;
 
