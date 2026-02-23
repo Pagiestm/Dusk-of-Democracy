@@ -3,7 +3,7 @@ import { WeaponDef } from '../types';
 export const WEAPONS: WeaponDef[] = [
     {
         id: 'executive_order',
-        name: 'Executive Order',
+        name: 'Decret Presidentiel',
         damage: 15,
         cooldown: 0.5,
         pattern: 'single',
@@ -12,7 +12,7 @@ export const WEAPONS: WeaponDef[] = [
     },
     {
         id: 'tweet_storm',
-        name: 'Tweet Storm',
+        name: 'Tempete de Tweets',
         damage: 8,
         cooldown: 0.3,
         pattern: 'spread',
@@ -23,7 +23,7 @@ export const WEAPONS: WeaponDef[] = [
     },
     {
         id: 'bolivarian_blast',
-        name: 'Bolivarian Blast',
+        name: 'Explosion Bolivarienne',
         damage: 25,
         cooldown: 1.0,
         pattern: 'area',
@@ -33,7 +33,7 @@ export const WEAPONS: WeaponDef[] = [
     },
     {
         id: 'wall_builder',
-        name: 'Wall Builder',
+        name: 'Batisseur de Mur',
         damage: 12,
         cooldown: 0.8,
         pattern: 'spread',

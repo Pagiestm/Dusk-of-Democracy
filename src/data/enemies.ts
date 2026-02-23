@@ -4,7 +4,7 @@ import { EnemyDef } from '../types';
 export const ENEMIES: EnemyDef[] = [
     {
         id: 'basic',
-        name: 'Protestor',
+        name: 'Manifestant',
         hp: 20,
         speed: 3,
         damage: 10,
@@ -14,7 +14,7 @@ export const ENEMIES: EnemyDef[] = [
     },
     {
         id: 'fast',
-        name: 'Journalist',
+        name: 'Journaliste',
         hp: 10,
         speed: 6,
         damage: 5,
@@ -24,7 +24,7 @@ export const ENEMIES: EnemyDef[] = [
     },
     {
         id: 'tank',
-        name: 'Activist',
+        name: 'Militant',
         hp: 80,
         speed: 1.5,
         damage: 25,
@@ -34,7 +34,7 @@ export const ENEMIES: EnemyDef[] = [
     },
     {
         id: 'swarm',
-        name: 'Twitter Bot',
+        name: 'Bot Twitter',
         hp: 5,
         speed: 5,
         damage: 3,

@@ -5,7 +5,7 @@ export const CHARACTERS: CharacterDef[] = [
     {
         id: 'trump',
         name: 'Donald Trump',
-        description: 'Make Surviving Great Again. High HP, slow speed.',
+        description: 'Make Surviving Great Again. PV eleves, vitesse lente.',
         hp: 150,
         speed: 7,
         startingWeaponId: 'executive_order',
@@ -14,7 +14,7 @@ export const CHARACTERS: CharacterDef[] = [
     {
         id: 'kirk',
         name: 'Charlie Kirk',
-        description: 'Small face, big damage. Fast but fragile.',
+        description: 'Petite tete, gros degats. Rapide mais fragile.',
         hp: 80,
         speed: 10,
         startingWeaponId: 'tweet_storm',
@@ -23,7 +23,7 @@ export const CHARACTERS: CharacterDef[] = [
     {
         id: 'maduro',
         name: 'Nicolas Maduro',
-        description: 'The bus driver of destruction. Balanced stats.',
+        description: 'Le chauffeur de bus de la destruction. Stats equilibrees.',
         hp: 120,
         speed: 8,
         startingWeaponId: 'bolivarian_blast',

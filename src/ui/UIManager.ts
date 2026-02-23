@@ -46,12 +46,12 @@ export class UIManager {
         this.mainMenu.className = 'main-menu hidden';
         this.mainMenu.innerHTML = `
             <h1>DUSK OF DEMOCRACY</h1>
-            <p class="subtitle">When Democracy Falls, Chaos Rises</p>
+            <p class="subtitle">Quand la democratie tombe, le chaos se leve</p>
         `;
 
         const playBtn = document.createElement('button');
         playBtn.className = 'btn';
-        playBtn.textContent = 'PLAY';
+        playBtn.textContent = 'JOUER';
         playBtn.onclick = () => this.game.setState(GameState.CHARACTER_SELECT);
         this.mainMenu.appendChild(playBtn);
 
@@ -64,7 +64,7 @@ export class UIManager {
         this.charSelect.className = 'character-select hidden';
 
         const title = document.createElement('h2');
-        title.textContent = 'Choose Your Fighter';
+        title.textContent = 'Choisis ton combattant';
         this.charSelect.appendChild(title);
 
         const grid = document.createElement('div');
@@ -86,7 +86,7 @@ export class UIManager {
 
             const stats = document.createElement('div');
             stats.className = 'stats';
-            stats.textContent = `HP: ${char.hp} | Speed: ${char.speed}`;
+            stats.textContent = `PV: ${char.hp} | Vitesse: ${char.speed}`;
 
             card.appendChild(avatar);
             card.appendChild(name);
@@ -101,7 +101,7 @@ export class UIManager {
 
         const backBtn = document.createElement('button');
         backBtn.className = 'btn btn-secondary';
-        backBtn.textContent = 'BACK';
+        backBtn.textContent = 'RETOUR';
         backBtn.onclick = () => this.game.setState(GameState.MAIN_MENU);
         this.charSelect.appendChild(backBtn);
 
@@ -139,7 +139,7 @@ export class UIManager {
         xpContainer.appendChild(this.xpBar);
         this.xpLabel = document.createElement('div');
         this.xpLabel.className = 'bar-label';
-        this.xpLabel.textContent = 'LVL 1';
+        this.xpLabel.textContent = 'NIV 1';
         xpContainer.appendChild(this.xpLabel);
         left.appendChild(xpContainer);
 
@@ -148,11 +148,11 @@ export class UIManager {
         center.className = 'hud-center';
         this.waveDisplay = document.createElement('div');
         this.waveDisplay.className = 'wave-display';
-        this.waveDisplay.textContent = 'Wave 1';
+        this.waveDisplay.textContent = 'Vague 1';
         center.appendChild(this.waveDisplay);
         this.levelDisplay = document.createElement('div');
         this.levelDisplay.className = 'level-display';
-        this.levelDisplay.textContent = 'Level 1';
+        this.levelDisplay.textContent = 'Niveau 1';
         center.appendChild(this.levelDisplay);
 
         // Right: Timer, Kills, Gold
@@ -161,10 +161,10 @@ export class UIManager {
         this.timerDisplay = document.createElement('div');
         this.timerDisplay.textContent = '00:00';
         this.killDisplay = document.createElement('div');
-        this.killDisplay.textContent = 'Kills: 0';
+        this.killDisplay.textContent = 'Eliminations: 0';
         this.goldDisplay = document.createElement('div');
         this.goldDisplay.style.color = '#f7c948';
-        this.goldDisplay.textContent = 'Gold: 0';
+        this.goldDisplay.textContent = 'Or: 0';
         right.appendChild(this.timerDisplay);
         right.appendChild(this.killDisplay);
         right.appendChild(this.goldDisplay);
@@ -187,7 +187,7 @@ export class UIManager {
 
         const upgrades = this.game.upgradeSystem.getRandomUpgrades(3);
 
-        this.levelUpScreen.innerHTML = `<h2>LEVEL UP!</h2>`;
+        this.levelUpScreen.innerHTML = `<h2>NIVEAU SUPERIEUR !</h2>`;
 
         const cards = document.createElement('div');
         cards.className = 'upgrade-cards';
@@ -201,7 +201,7 @@ export class UIManager {
             card.innerHTML = `
                 <h3>${upgrade.name}</h3>
                 <p>${upgrade.description}</p>
-                <p style="color: #888; font-size: 11px; margin-top: 8px;">Level ${level + 1}/${upgrade.maxLevel}</p>
+                <p style="color: #888; font-size: 11px; margin-top: 8px;">Niveau ${level + 1}/${upgrade.maxLevel}</p>
             `;
 
             card.onclick = () => this.game.selectUpgrade(upgrade.id);
@@ -215,17 +215,17 @@ export class UIManager {
     private createPauseScreen(): void {
         this.pauseScreen = document.createElement('div');
         this.pauseScreen.className = 'pause-screen hidden';
-        this.pauseScreen.innerHTML = `<h2>PAUSED</h2>`;
+        this.pauseScreen.innerHTML = `<h2>PAUSE</h2>`;
 
         const resumeBtn = document.createElement('button');
         resumeBtn.className = 'btn';
-        resumeBtn.textContent = 'RESUME';
+        resumeBtn.textContent = 'REPRENDRE';
         resumeBtn.onclick = () => this.game.resumeGame();
         this.pauseScreen.appendChild(resumeBtn);
 
         const quitBtn = document.createElement('button');
         quitBtn.className = 'btn btn-secondary';
-        quitBtn.textContent = 'QUIT TO MENU';
+        quitBtn.textContent = 'QUITTER';
         quitBtn.onclick = () => this.game.setState(GameState.MAIN_MENU);
         this.pauseScreen.appendChild(quitBtn);
 
@@ -245,19 +245,19 @@ export class UIManager {
         const time = this.formatTime(this.game.getGameTime());
 
         this.gameOverScreen.innerHTML = `
-            <h2>GAME OVER</h2>
+            <h2>DEFAITE</h2>
             <div class="stats-list">
-                <div>Time Survived: ${time}</div>
-                <div>Level Reached: ${this.game.getLevel()}</div>
-                <div>Enemies Killed: ${this.game.getKillCount()}</div>
-                <div>Wave Reached: ${this.game.getWave()}</div>
-                <div style="color: #f7c948;">Gold Earned: ${this.game.getGold()}</div>
+                <div>Temps survecu : ${time}</div>
+                <div>Niveau atteint : ${this.game.getLevel()}</div>
+                <div>Ennemis elimines : ${this.game.getKillCount()}</div>
+                <div>Vague atteinte : ${this.game.getWave()}</div>
+                <div style="color: #f7c948;">Or gagne : ${this.game.getGold()}</div>
             </div>
         `;
 
         const retryBtn = document.createElement('button');
         retryBtn.className = 'btn';
-        retryBtn.textContent = 'TRY AGAIN';
+        retryBtn.textContent = 'REESSAYER';
         retryBtn.onclick = () => {
             if (this.game.selectedCharacter) {
                 this.game.startGame(this.game.selectedCharacter.id);
@@ -267,7 +267,7 @@ export class UIManager {
 
         const menuBtn = document.createElement('button');
         menuBtn.className = 'btn btn-secondary';
-        menuBtn.textContent = 'MAIN MENU';
+        menuBtn.textContent = 'MENU PRINCIPAL';
         menuBtn.onclick = () => this.game.setState(GameState.MAIN_MENU);
         this.gameOverScreen.appendChild(menuBtn);
     }
@@ -322,22 +322,22 @@ export class UIManager {
             this.xpBar.style.width = `${this.game.getXPProgress() * 100}%`;
         }
         if (this.xpLabel) {
-            this.xpLabel.textContent = `LVL ${this.game.getLevel()}`;
+            this.xpLabel.textContent = `NIV ${this.game.getLevel()}`;
         }
         if (this.waveDisplay) {
-            this.waveDisplay.textContent = `Wave ${this.game.getWave()}`;
+            this.waveDisplay.textContent = `Vague ${this.game.getWave()}`;
         }
         if (this.levelDisplay) {
-            this.levelDisplay.textContent = `Level ${this.game.getLevel()}`;
+            this.levelDisplay.textContent = `Niveau ${this.game.getLevel()}`;
         }
         if (this.timerDisplay) {
             this.timerDisplay.textContent = this.formatTime(this.game.getGameTime());
         }
         if (this.killDisplay) {
-            this.killDisplay.textContent = `Kills: ${this.game.getKillCount()}`;
+            this.killDisplay.textContent = `Eliminations: ${this.game.getKillCount()}`;
         }
         if (this.goldDisplay) {
-            this.goldDisplay.textContent = `Gold: ${this.game.getGold()}`;
+            this.goldDisplay.textContent = `Or: ${this.game.getGold()}`;
         }
     }
 

@@ -14,22 +14,22 @@ export class ShopSystem {
     private items: ShopItem[] = [
         {
             id: 'heal_potion',
-            name: 'Heal Potion',
-            description: 'Restore 50 HP',
+            name: 'Potion de Soin',
+            description: 'Restaure 50 PV',
             cost: 50,
             apply: (stats) => { stats.hp = Math.min(stats.hp + 50, stats.maxHp); },
         },
         {
             id: 'speed_boots',
-            name: 'Speed Boots',
-            description: '+10% Speed',
+            name: 'Bottes de Vitesse',
+            description: '+10% Vitesse',
             cost: 100,
             apply: (stats) => { stats.speed *= 1.1; },
         },
         {
             id: 'armor_plate',
-            name: 'Armor Plate',
-            description: '+10 Armor',
+            name: 'Plaque de Blindage',
+            description: '+10 Armure',
             cost: 150,
             apply: (stats) => { stats.armor += 10; },
         },
