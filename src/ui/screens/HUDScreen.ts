@@ -5,6 +5,9 @@ export class HUDScreen {
 
     private hpBar:          HTMLElement | null = null;
     private hpLabel:        HTMLElement | null = null;
+    private armorContainer: HTMLElement | null = null;
+    private armorBar:       HTMLElement | null = null;
+    private armorLabel:     HTMLElement | null = null;
     private xpBar:          HTMLElement | null = null;
     private xpLabel:        HTMLElement | null = null;
     private waveDisplay:    HTMLElement | null = null;
@@ -33,6 +36,20 @@ export class HUDScreen {
         this.hpLabel.textContent = '100/100';
         hpContainer.appendChild(this.hpLabel);
         left.appendChild(hpContainer);
+
+        // Armor Bar
+        this.armorContainer = document.createElement('div');
+        this.armorContainer.className = 'bar-container armor-bar';
+        this.armorContainer.style.display = 'none';
+        this.armorBar = document.createElement('div');
+        this.armorBar.className = 'bar-fill';
+        this.armorBar.style.width = '0%';
+        this.armorContainer.appendChild(this.armorBar);
+        this.armorLabel = document.createElement('div');
+        this.armorLabel.className = 'bar-label';
+        this.armorLabel.textContent = '0';
+        this.armorContainer.appendChild(this.armorLabel);
+        left.appendChild(this.armorContainer);
 
         const xpContainer = document.createElement('div');
         xpContainer.className = 'bar-container xp-bar';
@@ -98,6 +115,17 @@ export class HUDScreen {
         }
         if (this.hpLabel) {
             this.hpLabel.textContent = `${Math.ceil(game.getHP())}/${game.getMaxHP()}`;
+        }
+        if (this.armorContainer && this.armorBar && this.armorLabel) {
+            const armor = game.getArmor();
+            const maxArmor = game.getMaxArmor();
+            if (armor > 0 && maxArmor > 0) {
+                this.armorContainer.style.display = 'block';
+                this.armorBar.style.width = `${(armor / maxArmor) * 100}%`;
+                this.armorLabel.textContent = `${Math.ceil(armor)}/${maxArmor}`;
+            } else {
+                this.armorContainer.style.display = 'none';
+            }
         }
         if (this.xpBar) {
             this.xpBar.style.width = `${game.getXPProgress() * 100}%`;

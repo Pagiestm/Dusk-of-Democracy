@@ -13,6 +13,7 @@ import { GameOverScreen }        from './screens/GameOverScreen';
 
 export class UIManager {
     private game: Game;
+    private root: HTMLElement;
 
     private mainMenu:     MainMenuScreen;
     private charSelect:   CharacterSelectScreen;
@@ -25,7 +26,8 @@ export class UIManager {
 
     constructor(game: Game) {
         this.game = game;
-        const root = document.getElementById('ui-root')!;
+        this.root = document.getElementById('ui-root')!;
+        const root = this.root;
 
         this.mainMenu     = new MainMenuScreen(game, root);
         this.charSelect   = new CharacterSelectScreen(game, root);
@@ -35,6 +37,8 @@ export class UIManager {
         this.pause        = new PauseScreen(game, root);
         this.waveEnd      = new WaveEndScreen(game, root);
         this.gameOver     = new GameOverScreen(game, root);
+
+        this.setupFloatingDamage();
     }
 
     // ─── State Management ─────────────────────────────────────────────────────
