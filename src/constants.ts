@@ -30,7 +30,7 @@ export const XP_PICKUP_MAGNET_SPEED = 15;
 export const XP_PICKUP_SIZE = 0.3;
 
 // === Day/Night ===
-export const DAY_CYCLE_DURATION = 300; // seconds for full cycle (5 min)
+export const DAY_CYCLE_DURATION = 180; // secondes par cycle complet (jour+nuit)
 export const NIGHT_SPAWN_MULTIPLIER = 1.5;
 export const NIGHT_SPEED_MULTIPLIER = 1.2;
 

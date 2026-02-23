@@ -70,7 +70,7 @@ export function setupScene(app: pc.Application): { camera: pc.Entity; light: pc.
     // === Camera ===
     const camera = new pc.Entity('camera');
     camera.addComponent('camera', {
-        clearColor: new pc.Color(0.1, 0.1, 0.15),
+        clearColor: new pc.Color(0.35, 0.58, 0.88), // ciel bleu jour
         farClip: 200,
         fov: 45,
     });
@@ -82,8 +82,8 @@ export function setupScene(app: pc.Application): { camera: pc.Entity; light: pc.
     const light = new pc.Entity('sun');
     light.addComponent('light', {
         type: 'directional',
-        color: new pc.Color(1, 0.95, 0.85),
-        intensity: 1.2,
+        color: new pc.Color(1, 0.95, 0.80),
+        intensity: 1.5,
         castShadows: true,
         shadowBias: 0.2,
         normalOffsetBias: 0.05,
@@ -94,7 +94,7 @@ export function setupScene(app: pc.Application): { camera: pc.Entity; light: pc.
     app.root.addChild(light);
 
     // === Ambient light ===
-    app.scene.ambientLight = new pc.Color(0.3, 0.3, 0.4);
+    app.scene.ambientLight = new pc.Color(0.50, 0.50, 0.55);
 
     return { camera, light };
 }

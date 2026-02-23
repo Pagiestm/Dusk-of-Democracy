@@ -23,6 +23,7 @@ export class UIManager {
     private xpLabel: HTMLElement | null = null;
     private waveDisplay: HTMLElement | null = null;
     private levelDisplay: HTMLElement | null = null;
+    private dayNightDisplay: HTMLElement | null = null;
     private timerDisplay: HTMLElement | null = null;
     private killDisplay: HTMLElement | null = null;
     private goldDisplay: HTMLElement | null = null;
@@ -250,9 +251,13 @@ export class UIManager {
         this.goldDisplay = document.createElement('div');
         this.goldDisplay.style.color = '#f7c948';
         this.goldDisplay.textContent = 'Or: 0';
+        this.dayNightDisplay = document.createElement('div');
+        this.dayNightDisplay.className = 'day-night-display day';
+        this.dayNightDisplay.textContent = '☀️ JOUR';
         right.appendChild(this.timerDisplay);
         right.appendChild(this.killDisplay);
         right.appendChild(this.goldDisplay);
+        right.appendChild(this.dayNightDisplay);
 
         this.hud.appendChild(left);
         this.hud.appendChild(center);
@@ -413,6 +418,24 @@ export class UIManager {
         }
         if (this.xpLabel) {
             this.xpLabel.textContent = `NIV ${this.game.getLevel()}`;
+        }
+        if (this.dayNightDisplay) {
+            const nf: number = (this.game.app as any).__nightFactor ?? 0;
+            const t: number  = (this.game.app as any).__timeOfDay ?? 0;
+            let icon: string; let label: string; let cls: string;
+            if (nf >= 0.85) {
+                icon = '🌙'; label = 'NUIT'; cls = 'night';
+            } else if (nf >= 0.15) {
+                // transition : dusk si on descend, dawn si on monte
+                if (t < 0.7) { icon = '🌅'; label = 'CRÉPUSCULE'; cls = 'dusk'; }
+                else         { icon = '🌄'; label = 'AUBE'; cls = 'dawn'; }
+            } else {
+                icon = '☀️'; label = 'JOUR'; cls = 'day';
+            }
+            if (!this.dayNightDisplay.classList.contains(cls)) {
+                this.dayNightDisplay.className = `day-night-display ${cls}`;
+            }
+            this.dayNightDisplay.textContent = `${icon} ${label}`;
         }
         if (this.waveDisplay) {
             this.waveDisplay.textContent = `Vague ${this.game.getWave()}`;

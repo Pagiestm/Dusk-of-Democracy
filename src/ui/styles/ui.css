@@ -215,6 +215,48 @@
     color: #44aaff;
 }
 
+/* === Day / Night HUD indicator === */
+.day-night-display {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 12px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    transition: background 1s, color 1s, border-color 1s;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+}
+
+.day-night-display.day {
+    background: rgba(255, 220, 80, 0.15);
+    color: #f7d050;
+    border-color: rgba(255, 220, 80, 0.4);
+}
+
+.day-night-display.dusk {
+    background: rgba(200, 80, 20, 0.20);
+    color: #ff8844;
+    border-color: rgba(200, 80, 20, 0.5);
+}
+
+.day-night-display.night {
+    background: rgba(40, 40, 120, 0.35);
+    color: #aabbff;
+    border-color: rgba(80, 80, 200, 0.5);
+    animation: night-pulse 2s ease-in-out infinite;
+}
+
+.day-night-display.dawn {
+    background: rgba(150, 80, 180, 0.20);
+    color: #cc99ff;
+    border-color: rgba(150, 80, 180, 0.4);
+}
+
+@keyframes night-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(100, 120, 255, 0.3); }
+    50%       { box-shadow: 0 0 18px rgba(100, 120, 255, 0.7); }
+}
+
 /* === Level Up Screen === */
 .level-up-screen {
     position: absolute;

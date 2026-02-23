@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { ENEMY_CONTACT_COOLDOWN, GameState } from '../constants';
+import { ENEMY_CONTACT_COOLDOWN, NIGHT_SPEED_MULTIPLIER, GameState } from '../constants';
 
 export class EnemyAI extends pc.Script {
     static scriptName = 'enemyAI';
@@ -16,6 +16,10 @@ export class EnemyAI extends pc.Script {
         const player = this.app.root.findByName('player');
         if (!player) return;
 
+        // Vitesse boostée la nuit
+        const nightFactor: number = (this.app as any).__nightFactor ?? 0;
+        const effectiveSpeed = this.speed * (1 + nightFactor * (NIGHT_SPEED_MULTIPLIER - 1));
+
         // Move toward player
         const myPos = this.entity.getPosition();
         const playerPos = player.getPosition();
@@ -27,9 +31,9 @@ export class EnemyAI extends pc.Script {
         if (dist > 0.5) {
             this.dir.normalize();
             this.entity.setPosition(
-                myPos.x + this.dir.x * this.speed * dt,
+                myPos.x + this.dir.x * effectiveSpeed * dt,
                 myPos.y,
-                myPos.z + this.dir.z * this.speed * dt
+                myPos.z + this.dir.z * effectiveSpeed * dt
             );
         }
 
@@ -52,3 +56,4 @@ export class EnemyAI extends pc.Script {
         this.contactTimer = ENEMY_CONTACT_COOLDOWN;
     }
 }
+
