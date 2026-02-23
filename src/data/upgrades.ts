@@ -50,10 +50,11 @@ export const UPGRADES: UpgradeDef[] = [
     {
         id: 'armor_up',
         name: 'Gilet Pare-balles',
-        description: '+5 Armure (reduction de degats)',
+        description: '+15 Bouclier',
         maxLevel: 5,
         apply: (stats: PlayerStats) => {
-            stats.armor += 5;
+            stats.armor += 15;
+            stats.maxArmor += 15;
         },
     },
     {

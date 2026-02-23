@@ -595,6 +595,22 @@
     text-shadow: 1px 1px 2px #000;
 }
 
+/* === Armor Bar === */
+.armor-bar .bar-fill {
+    background: linear-gradient(90deg, #4466aa, #6699dd);
+}
+
+/* === Floating Damage Text === */
+.floating-damage {
+    position: absolute;
+    font-size: 20px;
+    font-weight: 900;
+    pointer-events: none;
+    text-shadow: 1px 1px 3px #000, -1px -1px 3px #000;
+    transform: translateX(-50%);
+    z-index: 100;
+}
+
 .wave-display {
     font-size: 24px;
     font-weight: 700;

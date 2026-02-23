@@ -1,3 +1,4 @@
+import * as pc from 'playcanvas';
 import { GameState } from '../constants';
 import type { Game } from '../core/Game';
 
@@ -94,5 +95,58 @@ export class UIManager {
         this.pause.hide();
         this.waveEnd.hide();
         this.gameOver.hide();
+    }
+
+    // === Floating Damage Text ===
+    private setupFloatingDamage(): void {
+        const app = this.game.app;
+
+        app.on('damage:dealt', (entity: any, damage: number, armorAbsorbed: boolean) => {
+            if (!entity || !entity.getPosition) return;
+
+            const cameraNode = app.root.findByName('camera') as pc.Entity | null;
+            if (!cameraNode || !cameraNode.camera) return;
+
+            const worldPos = entity.getPosition();
+            // Petit offset vertical pour que le texte apparaisse au dessus
+            const screenPos = cameraNode.camera.worldToScreen(new pc.Vec3(worldPos.x, worldPos.y + 1.5, worldPos.z));
+
+            if (screenPos.z < 0) return; // derriere la camera
+
+            const color = armorAbsorbed ? '#6688cc' : '#ff4444';
+            const text = `-${damage}`;
+
+            this.spawnFloatingText(text, screenPos.x, screenPos.y, color);
+        });
+    }
+
+    private spawnFloatingText(text: string, x: number, y: number, color: string): void {
+        const el = document.createElement('div');
+        el.className = 'floating-damage';
+        el.textContent = text;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.color = color;
+        this.root.appendChild(el);
+
+        // Animer vers le haut + fade out
+        let elapsed = 0;
+        const duration = 800;
+        const startY = y;
+
+        const animate = () => {
+            elapsed += 16;
+            const progress = elapsed / duration;
+            el.style.top = `${startY - progress * 50}px`;
+            el.style.opacity = `${1 - progress}`;
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                el.remove();
+            }
+        };
+
+        requestAnimationFrame(animate);
     }
 }
