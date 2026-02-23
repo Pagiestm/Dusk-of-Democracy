@@ -47,6 +47,7 @@ export enum GameState {
     LOADING = 'loading',
     MAIN_MENU = 'main_menu',
     CHARACTER_SELECT = 'character_select',
+    WEAPON_SELECT = 'weapon_select',
     PLAYING = 'playing',
     PAUSED = 'paused',
     LEVEL_UP = 'level_up',

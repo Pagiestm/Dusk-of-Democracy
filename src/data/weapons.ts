@@ -3,7 +3,8 @@ import { WeaponDef } from '../types';
 export const WEAPONS: WeaponDef[] = [
     {
         id: 'executive_order',
-        name: 'Decret Presidentiel',
+        name: 'Décret Présidentiel',
+        description: 'Tir précis et régulier. Équilibré entre dégâts et cadence. Idéal pour débuter.',
         damage: 15,
         cooldown: 0.5,
         pattern: 'single',
@@ -12,7 +13,8 @@ export const WEAPONS: WeaponDef[] = [
     },
     {
         id: 'tweet_storm',
-        name: 'Tempete de Tweets',
+        name: 'Tempête de Tweets',
+        description: 'Lance 3 projectiles en éventail. Couvre une large zone devant soi. Redoutable dans les couloirs.',
         damage: 8,
         cooldown: 0.3,
         pattern: 'spread',
@@ -24,6 +26,7 @@ export const WEAPONS: WeaponDef[] = [
     {
         id: 'bolivarian_blast',
         name: 'Explosion Bolivarienne',
+        description: 'Déclenche une onde de choc autour du joueur. Touche TOUS les ennemis proches. Lent mais dévastateur.',
         damage: 25,
         cooldown: 1.0,
         pattern: 'area',
@@ -33,7 +36,8 @@ export const WEAPONS: WeaponDef[] = [
     },
     {
         id: 'wall_builder',
-        name: 'Batisseur de Mur',
+        name: 'Bâtisseur de Mur',
+        description: 'Tire 5 projectiles en large éventail. Crée un mur de balles face aux vagues ennemies.',
         damage: 12,
         cooldown: 0.8,
         pattern: 'spread',
@@ -45,10 +49,12 @@ export const WEAPONS: WeaponDef[] = [
     {
         id: 'sanctions',
         name: 'Sanctions',
-        damage: 5,
-        cooldown: 0.15,
+        description: 'Cadence de tir extrêmement rapide mais faibles dégâts individuels. La quantité fait la qualité.',
+        damage: 4,
+        cooldown: 0.12,
         pattern: 'single',
         projectileSpeed: 25,
         projectileLifetime: 1.2,
     },
 ];
+

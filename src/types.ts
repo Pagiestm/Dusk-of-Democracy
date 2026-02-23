@@ -18,7 +18,7 @@ export interface CharacterDef {
     description: string;
     hp: number;
     speed: number;
-    startingWeaponId: string;
+    startingWeaponId?: string; // kept for reference, player now picks their own
     color: pc.Color; // placeholder color until models are loaded
     modelPath?: string;
     texturePath?: string;
@@ -30,6 +30,7 @@ export type WeaponPattern = 'single' | 'spread' | 'orbit' | 'area';
 export interface WeaponDef {
     id: string;
     name: string;
+    description: string;
     damage: number;
     cooldown: number;
     pattern: WeaponPattern;

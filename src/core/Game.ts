@@ -43,6 +43,7 @@ export class Game {
     // Player state
     playerStats: PlayerStats = this.defaultStats();
     selectedCharacter: CharacterDef | null = null;
+    selectedWeaponId: string | null = null;
     gameTime: number = 0;
     killCount: number = 0;
 
@@ -127,11 +128,19 @@ export class Game {
         this.uiManager.onStateChange(oldState, newState);
     }
 
-    startGame(characterId: string): void {
+    selectCharacter(characterId: string): void {
+        const charDef = CHARACTERS.find(c => c.id === characterId);
+        if (!charDef) return;
+        this.selectedCharacter = charDef;
+        this.setState(GameState.WEAPON_SELECT);
+    }
+
+    startGame(characterId: string, weaponId: string): void {
         const charDef = CHARACTERS.find(c => c.id === characterId);
         if (!charDef) return;
 
         this.selectedCharacter = charDef;
+        this.selectedWeaponId = weaponId;
 
         // Reset everything
         this.resetGame();
@@ -160,9 +169,9 @@ export class Game {
             camFollow.setTarget(this.playerEntity);
         }
 
-        // Add starting weapon
+        // Add starting weapon (chosen by the player at selection screen)
         this.combatSystem.setPlayer(this.playerEntity);
-        const weaponDef = WEAPONS.find(w => w.id === charDef.startingWeaponId);
+        const weaponDef = WEAPONS.find(w => w.id === weaponId);
         if (weaponDef) {
             this.combatSystem.addWeapon(weaponDef);
         }

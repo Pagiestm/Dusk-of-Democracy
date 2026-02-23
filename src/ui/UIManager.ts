@@ -1,5 +1,6 @@
 import { GameState } from '../constants';
 import { CHARACTERS } from '../data/characters';
+import { WEAPONS } from '../data/weapons';
 import type { Game } from '../core/Game';
 
 export class UIManager {
@@ -9,6 +10,7 @@ export class UIManager {
     // Screen elements
     private mainMenu: HTMLElement | null = null;
     private charSelect: HTMLElement | null = null;
+    private weaponSelect: HTMLElement | null = null;
     private hud: HTMLElement | null = null;
     private levelUpScreen: HTMLElement | null = null;
     private pauseScreen: HTMLElement | null = null;
@@ -34,6 +36,7 @@ export class UIManager {
     private createScreens(): void {
         this.createMainMenu();
         this.createCharacterSelect();
+        this.createWeaponSelect();
         this.createHUD();
         this.createLevelUpScreen();
         this.createPauseScreen();
@@ -93,7 +96,7 @@ export class UIManager {
             card.appendChild(desc);
             card.appendChild(stats);
 
-            card.onclick = () => this.game.startGame(char.id);
+            card.onclick = () => this.game.selectCharacter(char.id);
             grid.appendChild(card);
         }
 
@@ -108,7 +111,89 @@ export class UIManager {
         this.root.appendChild(this.charSelect);
     }
 
-    // === HUD ===
+    // === Weapon Select ===
+    private createWeaponSelect(): void {
+        this.weaponSelect = document.createElement('div');
+        this.weaponSelect.className = 'weapon-select hidden';
+        this.root.appendChild(this.weaponSelect);
+    }
+
+    private showWeaponChoices(): void {
+        if (!this.weaponSelect) return;
+        this.weaponSelect.innerHTML = '';
+
+        const char = this.game.selectedCharacter;
+
+        const title = document.createElement('h2');
+        title.textContent = 'Choisis ton arme';
+        this.weaponSelect.appendChild(title);
+
+        // Show selected character summary
+        if (char) {
+            const r = Math.floor(char.color.r * 255);
+            const g = Math.floor(char.color.g * 255);
+            const b = Math.floor(char.color.b * 255);
+            const charBanner = document.createElement('div');
+            charBanner.className = 'char-banner';
+            charBanner.innerHTML = `
+                <div class="char-banner-avatar" style="background: rgb(${r},${g},${b})"></div>
+                <div class="char-banner-info">
+                    <strong>${char.name}</strong>
+                    <span>PV: ${char.hp} &nbsp;|&nbsp; Vitesse: ${char.speed}</span>
+                </div>
+            `;
+            this.weaponSelect.appendChild(charBanner);
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'weapon-grid';
+
+        const patternMeta: Record<string, { label: string; icon: string; color: string }> = {
+            single:  { label: 'Tir unique',   icon: '🎯', color: '#44aaff' },
+            spread:  { label: 'Dispersion',   icon: '🌀', color: '#44cc88' },
+            area:    { label: 'Zone',          icon: '💥', color: '#ff6b35' },
+            orbit:   { label: 'Orbite',        icon: '🔄', color: '#cc44ff' },
+        };
+
+        for (const weapon of WEAPONS) {
+            const meta = patternMeta[weapon.pattern] ?? { label: weapon.pattern, icon: '⚡', color: '#fff' };
+
+            // Effective single-target DPS
+            const singleDps = Math.round(weapon.damage / weapon.cooldown);
+            const totalDps   = weapon.spreadCount
+                ? Math.round(weapon.damage * weapon.spreadCount / weapon.cooldown)
+                : singleDps;
+
+            const dpsDisplay = weapon.spreadCount
+                ? `${singleDps} (${totalDps} total)`
+                : `${singleDps}`;
+
+            const card = document.createElement('div');
+            card.className = 'weapon-card';
+            card.innerHTML = `
+                <div class="weapon-pattern-tag" style="color: ${meta.color}">${meta.icon} ${meta.label}</div>
+                <div class="weapon-name">${weapon.name}</div>
+                <p class="weapon-desc">${weapon.description}</p>
+                <div class="weapon-stats">
+                    <div class="weapon-stat"><span class="stat-label">Dégâts</span><span class="stat-val">${weapon.damage}</span></div>
+                    <div class="weapon-stat"><span class="stat-label">Cadence</span><span class="stat-val">${weapon.cooldown}s</span></div>
+                    <div class="weapon-stat"><span class="stat-label">DPS</span><span class="stat-val">${dpsDisplay}</span></div>
+                </div>
+            `;
+            card.onclick = () => {
+                if (char) this.game.startGame(char.id, weapon.id);
+            };
+            grid.appendChild(card);
+        }
+
+        this.weaponSelect.appendChild(grid);
+
+        const backBtn = document.createElement('button');
+        backBtn.className = 'btn btn-secondary';
+        backBtn.textContent = 'RETOUR';
+        backBtn.onclick = () => this.game.setState(GameState.CHARACTER_SELECT);
+        this.weaponSelect.appendChild(backBtn);
+    }
     private createHUD(): void {
         this.hud = document.createElement('div');
         this.hud.className = 'hud hidden';
@@ -259,8 +344,8 @@ export class UIManager {
         retryBtn.className = 'btn';
         retryBtn.textContent = 'REESSAYER';
         retryBtn.onclick = () => {
-            if (this.game.selectedCharacter) {
-                this.game.startGame(this.game.selectedCharacter.id);
+            if (this.game.selectedCharacter && this.game.selectedWeaponId) {
+                this.game.startGame(this.game.selectedCharacter.id, this.game.selectedWeaponId);
             }
         };
         this.gameOverScreen.appendChild(retryBtn);
@@ -277,6 +362,7 @@ export class UIManager {
         // Hide all screens
         this.mainMenu?.classList.add('hidden');
         this.charSelect?.classList.add('hidden');
+        this.weaponSelect?.classList.add('hidden');
         this.hud?.classList.add('hidden');
         this.levelUpScreen?.classList.add('hidden');
         this.pauseScreen?.classList.add('hidden');
@@ -289,6 +375,10 @@ export class UIManager {
                 break;
             case GameState.CHARACTER_SELECT:
                 this.charSelect?.classList.remove('hidden');
+                break;
+            case GameState.WEAPON_SELECT:
+                this.showWeaponChoices();
+                this.weaponSelect?.classList.remove('hidden');
                 break;
             case GameState.PLAYING:
                 this.hud?.classList.remove('hidden');
