@@ -10,6 +10,7 @@ export const CHARACTERS: CharacterDef[] = [
         speed: 7,
         startingWeaponId: 'executive_order',
         color: new pc.Color(1, 0.6, 0.2), // orange
+        modelPath: 'assets/models/lowpoly_trump_free_character.glb',
     },
     {
         id: 'kirk',

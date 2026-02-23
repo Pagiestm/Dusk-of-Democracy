@@ -20,6 +20,8 @@ export interface CharacterDef {
     speed: number;
     startingWeaponId: string;
     color: pc.Color; // placeholder color until models are loaded
+    modelPath?: string;
+    texturePath?: string;
 }
 
 // === Weapons ===
