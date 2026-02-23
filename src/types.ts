@@ -53,19 +53,6 @@ export interface EnemyDef {
     scale: number;
 }
 
-// === Waves ===
-export interface WaveEnemyGroup {
-    enemyId: string;
-    count: number;
-}
-
-export interface WaveDef {
-    wave: number;
-    enemies: WaveEnemyGroup[];
-    spawnInterval: number;
-    duration: number;
-}
-
 // === Upgrades ===
 export interface UpgradeDef {
     id: string;
