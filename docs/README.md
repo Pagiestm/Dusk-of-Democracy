@@ -57,3 +57,22 @@ Ce document liste les principales contributions de chaque membre du projet.
   - Date de sortie et prix
 
 > Pour toute nouvelle contribution, ajouter une ligne ci-dessous avec la date, l'auteur et le détail de la modification.
+
+
+---
+
+## 📌 Prochaines tâches
+
+Pour la prochaine session de travail, les éléments suivants sont prévus :
+
+- Développement de la map
+- Développement des animations
+- Intégration des musiques dans le jeu
+- Développement du multijoueur
+
+---
+
+## 📋 Gestion de projet
+
+La gestion des tâches et du suivi du projet est réalisée à l’aide des **Issues GitHub**.  
+Chaque fonctionnalité, amélioration ou correction de bug est associée à une issue afin de faciliter le suivi du développement et la répartition du travail entre les membres de l’équipe.
