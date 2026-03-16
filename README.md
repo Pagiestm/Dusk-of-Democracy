@@ -120,7 +120,15 @@ npm run preview
         |-- screens/            # Ecrans (menu, HUD, level-up, etc.)
         |-- styles/
             |-- ui.css          # Styles de l'UI
+    |-- docs/                   # Documentation de projet
+        |-- README.md           # Historique des contributions et tâches
 ```
+
+---
+
+## Documentation des contributions
+
+- 🧾 Suivre qui a fait quoi : [docs/README.md](docs/README.md)
 
 ---
 
