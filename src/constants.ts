@@ -46,6 +46,8 @@ export enum CollisionLayer {
 export enum GameState {
     LOADING = 'loading',
     MAIN_MENU = 'main_menu',
+    LOGIN = 'login',
+    LOBBY = 'lobby',
     CHARACTER_SELECT = 'character_select',
     WEAPON_SELECT = 'weapon_select',
     PLAYING = 'playing',
@@ -54,6 +56,9 @@ export enum GameState {
     WAVE_END = 'wave_end',
     GAME_OVER = 'game_over',
 }
+
+// === Network ===
+export const SERVER_URL = 'http://localhost:4000';
 
 // === Collision matrix: which layers collide ===
 export const COLLISION_PAIRS: [CollisionLayer, CollisionLayer][] = [

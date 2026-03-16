@@ -3,6 +3,8 @@ import { GameState } from '../constants';
 import type { Game } from '../core/Game';
 
 import { MainMenuScreen }        from './screens/MainMenuScreen';
+import { LoginScreen }           from './screens/LoginScreen';
+import { LobbyScreen }           from './screens/LobbyScreen';
 import { CharacterSelectScreen } from './screens/CharacterSelectScreen';
 import { WeaponSelectScreen }    from './screens/WeaponSelectScreen';
 import { HUDScreen }             from './screens/HUDScreen';
@@ -16,6 +18,8 @@ export class UIManager {
     private root: HTMLElement;
 
     private mainMenu:     MainMenuScreen;
+    private login:        LoginScreen;
+    private lobby:        LobbyScreen;
     private charSelect:   CharacterSelectScreen;
     private weaponSelect: WeaponSelectScreen;
     private hud:          HUDScreen;
@@ -30,6 +34,8 @@ export class UIManager {
         const root = this.root;
 
         this.mainMenu     = new MainMenuScreen(game, root);
+        this.login        = new LoginScreen(game, root);
+        this.lobby        = new LobbyScreen(game, root);
         this.charSelect   = new CharacterSelectScreen(game, root);
         this.weaponSelect = new WeaponSelectScreen(game, root);
         this.hud          = new HUDScreen(game, root);
@@ -54,6 +60,12 @@ export class UIManager {
         switch (newState) {
             case GameState.MAIN_MENU:
                 this.mainMenu.show();
+                break;
+            case GameState.LOGIN:
+                this.login.show();
+                break;
+            case GameState.LOBBY:
+                this.lobby.show();
                 break;
             case GameState.CHARACTER_SELECT:
                 this.charSelect.show();
@@ -92,6 +104,8 @@ export class UIManager {
 
     private hideAll(): void {
         this.mainMenu.hide();
+        this.login.hide();
+        this.lobby.hide();
         this.charSelect.hide();
         this.weaponSelect.hide();
         this.hud.hide();

@@ -41,11 +41,28 @@ export class MainMenuScreen {
         const btnGroup = document.createElement('div');
         btnGroup.className = 'menu-btn-group';
 
-        const playBtn = document.createElement('button');
-        playBtn.className = 'menu-btn menu-btn-primary';
-        playBtn.innerHTML = `<span class="menu-btn-arrow">▶</span> JOUER`;
-        playBtn.onclick = () => game.setState(GameState.CHARACTER_SELECT);
-        btnGroup.appendChild(playBtn);
+        const soloBtn = document.createElement('button');
+        soloBtn.className = 'menu-btn menu-btn-primary';
+        soloBtn.innerHTML = `<span class="menu-btn-arrow">▶</span> SOLO`;
+        soloBtn.onclick = () => {
+            game.isMultiplayerGame = false;
+            game.setState(GameState.CHARACTER_SELECT);
+        };
+        btnGroup.appendChild(soloBtn);
+
+        const multiBtn = document.createElement('button');
+        multiBtn.className = 'menu-btn menu-btn-secondary';
+        multiBtn.innerHTML = `<span class="menu-btn-arrow">⚡</span> MULTIJOUEUR`;
+        multiBtn.onclick = () => {
+            if (game.network.isLoggedIn) {
+                game.network.connect();
+                game.setState(GameState.LOBBY);
+            } else {
+                game.setState(GameState.LOGIN);
+            }
+        };
+        btnGroup.appendChild(multiBtn);
+
         content.appendChild(btnGroup);
 
         // Version tag
