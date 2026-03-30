@@ -33,7 +33,7 @@ export class MainMenuScreen {
             <div class="menu-title-top">DUSK OF</div>
             <div class="menu-title-main">DEMOCRACY</div>
             <div class="menu-title-rule"></div>
-            <div class="menu-title-sub">Quand la democratie tombe, le chaos se leve</div>
+            <div class="menu-title-sub">Quand la démocratie tombe, le chaos se lève</div>
         `;
         content.appendChild(logoWrap);
 
