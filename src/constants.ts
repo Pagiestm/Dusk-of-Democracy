@@ -46,7 +46,6 @@ export enum CollisionLayer {
 export enum GameState {
     LOADING = 'loading',
     MAIN_MENU = 'main_menu',
-    LOGIN = 'login',
     LOBBY = 'lobby',
     CHARACTER_SELECT = 'character_select',
     WEAPON_SELECT = 'weapon_select',

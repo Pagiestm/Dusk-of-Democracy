@@ -42,7 +42,16 @@ export class DayNightCycle extends pc.Script {
         const game = (this.app as any).__game;
         if (!game || game.state !== GameState.PLAYING) return;
 
-        this.timeOfDay = (this.timeOfDay + dt / this.cycleDuration) % 1.0;
+        if (game.isClient) {
+            // CLIENT: use host-synced timeOfDay from snapshot
+            const syncedTime = (this.app as any).__timeOfDay;
+            if (syncedTime !== undefined) {
+                this.timeOfDay = syncedTime;
+            }
+        } else {
+            // HOST / SOLO: compute locally
+            this.timeOfDay = (this.timeOfDay + dt / this.cycleDuration) % 1.0;
+        }
 
         const nf = this.computeNightFactor(this.timeOfDay);
         this.applyColors(nf);

@@ -12,8 +12,8 @@ export class CombatSystem {
     private weapons: ActiveWeapon[] = [];
     private playerEntity: pc.Entity | null = null;
 
-    // Remote player weapons (host only, keyed by userId)
-    private remoteWeapons: Map<number, ActiveWeapon[]> = new Map();
+    // Remote player weapons (host only, keyed by playerId / socket.id)
+    private remoteWeapons: Map<string, ActiveWeapon[]> = new Map();
 
     constructor(app: pc.Application) {
         this.app = app;
@@ -40,30 +40,34 @@ export class CombatSystem {
     }
 
     /** Host: register a weapon for a remote player */
-    addRemoteWeapon(userId: number, def: WeaponDef): void {
-        if (!this.remoteWeapons.has(userId)) {
-            this.remoteWeapons.set(userId, []);
+    addRemoteWeapon(playerId: string, def: WeaponDef): void {
+        if (!this.remoteWeapons.has(playerId)) {
+            this.remoteWeapons.set(playerId, []);
         }
-        this.remoteWeapons.get(userId)!.push({ def, cooldownTimer: 0 });
+        this.remoteWeapons.get(playerId)!.push({ def, cooldownTimer: 0 });
     }
 
     update(dt: number, cooldownMultiplier: number, damageMultiplier: number, extraProjectiles: number): void {
         if (!this.playerEntity) return;
 
-        const game = (this.app as any).__game;
-        const input = game?.inputManager?.getState();
-        if (!input) return;
-
-        // Local player auto-fire
-        for (const weapon of this.weapons) {
-            weapon.cooldownTimer -= dt;
-            if (weapon.cooldownTimer <= 0) {
-                weapon.cooldownTimer = weapon.def.cooldown * cooldownMultiplier;
-                this.fireWeaponFromEntity(this.playerEntity, weapon.def, input.aimDirection.x, input.aimDirection.y, damageMultiplier, extraProjectiles);
+        // Local player auto-fire — only if alive (entity enabled)
+        if (this.playerEntity.enabled) {
+            const game = (this.app as any).__game;
+            const input = game?.inputManager?.getState();
+            if (input) {
+                this.currentOwnerId = game?.network?.myId || null;
+                for (const weapon of this.weapons) {
+                    weapon.cooldownTimer -= dt;
+                    if (weapon.cooldownTimer <= 0) {
+                        weapon.cooldownTimer = weapon.def.cooldown * cooldownMultiplier;
+                        this.fireWeaponFromEntity(this.playerEntity, weapon.def, input.aimDirection.x, input.aimDirection.y, damageMultiplier, extraProjectiles);
+                    }
+                }
+                this.currentOwnerId = null;
             }
         }
 
-        // Update cooldowns for remote weapons
+        // Update cooldowns for remote weapons (always, so they don't burst-fire on respawn)
         for (const weapons of this.remoteWeapons.values()) {
             for (const w of weapons) {
                 w.cooldownTimer -= dt;
@@ -73,21 +77,24 @@ export class CombatSystem {
 
     /** Host: fire weapons for a remote player when they press fire */
     fireForRemotePlayer(entity: pc.Entity, aimX: number, aimZ: number, damageMultiplier: number, extraProjectiles: number): void {
-        // Find the remote player's userId from entity name
-        const match = entity.name.match(/remote_player_(\d+)/);
-        if (!match) return;
-        const userId = parseInt(match[1]);
+        const playerId = (entity as any).__playerId as string | undefined;
+        if (!playerId) return;
 
-        const weapons = this.remoteWeapons.get(userId);
+        const weapons = this.remoteWeapons.get(playerId);
         if (!weapons) return;
 
+        this.currentOwnerId = playerId;
         for (const weapon of weapons) {
             if (weapon.cooldownTimer <= 0) {
                 weapon.cooldownTimer = weapon.def.cooldown;
                 this.fireWeaponFromEntity(entity, weapon.def, aimX, aimZ, damageMultiplier, extraProjectiles);
             }
         }
+        this.currentOwnerId = null;
     }
+
+    /** Current owner ID to tag on created projectiles */
+    private currentOwnerId: string | null = null;
 
     private fireWeaponFromEntity(
         entity: pc.Entity,
@@ -123,6 +130,12 @@ export class CombatSystem {
         }
     }
 
+    private tagProjectile(proj: pc.Entity): void {
+        if (this.currentOwnerId) {
+            (proj as any).__ownerId = this.currentOwnerId;
+        }
+    }
+
     private fireSingle(pos: pc.Vec3, aimX: number, aimZ: number, def: WeaponDef, damage: number, extraProjectiles: number): void {
         const totalProjectiles = 1 + extraProjectiles;
         const spreadPerExtra = 5;
@@ -134,7 +147,8 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage);
+            this.tagProjectile(proj);
         }
     }
 
@@ -151,7 +165,8 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage);
+            this.tagProjectile(proj);
         }
     }
 

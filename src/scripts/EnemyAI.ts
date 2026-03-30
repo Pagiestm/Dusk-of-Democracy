@@ -13,17 +13,34 @@ export class EnemyAI extends pc.Script {
         const game = (this.app as any).__game;
         if (game && game.state !== GameState.PLAYING) return;
 
-        const player = this.app.root.findByName('player');
-        if (!player) return;
+        // Find nearest ALIVE player (skip dead/disabled players)
+        const players = this.app.root.findByTag('player') as pc.Entity[];
+        if (players.length === 0) return;
+
+        const myPos = this.entity.getPosition();
+        let nearest: pc.Entity | null = null;
+        let nearestDist = Infinity;
+
+        for (const p of players) {
+            if (!p.enabled) continue; // skip dead players
+            const pp = p.getPosition();
+            const dx = pp.x - myPos.x;
+            const dz = pp.z - myPos.z;
+            const d = dx * dx + dz * dz;
+            if (d < nearestDist) {
+                nearestDist = d;
+                nearest = p;
+            }
+        }
+
+        if (!nearest) return;
+        const playerPos = nearest.getPosition();
 
         // Vitesse boostée la nuit
         const nightFactor: number = (this.app as any).__nightFactor ?? 0;
         const effectiveSpeed = this.speed * (1 + nightFactor * (NIGHT_SPEED_MULTIPLIER - 1));
 
-        // Move toward player
-        const myPos = this.entity.getPosition();
-        const playerPos = player.getPosition();
-
+        // Move toward nearest player
         this.dir.sub2(playerPos, myPos);
         this.dir.y = 0;
         const dist = this.dir.length();
@@ -37,7 +54,7 @@ export class EnemyAI extends pc.Script {
             );
         }
 
-        // Face player
+        // Face nearest player
         if (dist > 0.1) {
             this.entity.lookAt(playerPos.x, myPos.y, playerPos.z);
         }
