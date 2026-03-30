@@ -39,6 +39,7 @@ export class UIManager {
         this.gameOver     = new GameOverScreen(game, root);
 
         this.setupFloatingDamage();
+        this.setupClickSfx();
     }
 
     // ─── State Management ─────────────────────────────────────────────────────
@@ -99,6 +100,16 @@ export class UIManager {
         this.pause.hide();
         this.waveEnd.hide();
         this.gameOver.hide();
+    }
+
+    // === Click SFX on all UI buttons/cards ===
+    private setupClickSfx(): void {
+        this.root.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('button, .menu-btn, .menu-btn-primary, .sel-char-card, .sel-weapon-card, .upgrade-card, .shop-item')) {
+                this.game.audioManager.playSfx('click');
+            }
+        });
     }
 
     // === Floating Damage Text ===

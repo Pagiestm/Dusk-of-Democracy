@@ -18,6 +18,7 @@ import { EnemyAI } from '../scripts/EnemyAI';
 import { Health } from '../scripts/Health';
 import { XPPickup } from '../scripts/XPPickup';
 import { UIManager } from '../ui/UIManager';
+import { AudioManager } from './AudioManager';
 
 export class Game {
     app: pc.Application;
@@ -39,6 +40,9 @@ export class Game {
 
     // UI
     uiManager: UIManager;
+
+    // Audio
+    audioManager: AudioManager;
 
     // Player state
     playerStats: PlayerStats = this.defaultStats();
@@ -64,6 +68,9 @@ export class Game {
         // Init UI
         this.uiManager = new UIManager(this);
 
+        // Init Audio
+        this.audioManager = new AudioManager();
+
         // Register game loop
         app.on('update', this.update, this);
 
@@ -87,6 +94,9 @@ export class Game {
 
         // Show main menu
         this.setState(GameState.MAIN_MENU);
+
+        // Start menu music
+        this.audioManager.playMusic('menu');
     }
 
     private setupEvents(): void {
@@ -94,6 +104,7 @@ export class Game {
         this.app.on('enemy:died', (entity: pc.Entity, _xpReward: number) => {
             this.killCount++;
             this.shopSystem.addGold(Math.floor(Math.random() * 5) + 1);
+            this.audioManager.playSfx('enemyDeath');
 
             // Unregister from collision
             this.collisionSystem.unregister(entity);
@@ -106,12 +117,14 @@ export class Game {
 
         // XP collected
         this.app.on('xp:collected', (_amount: number) => {
-            // XPSystem handles the XP logic
+            this.audioManager.playSfx('xpPickup');
         });
 
         // Player level up
         this.app.on('player:levelup', (_level: number) => {
             if (this.state === GameState.PLAYING) {
+                this.audioManager.pauseMusic();
+                this.audioManager.playSfx('levelup');
                 this.setState(GameState.LEVEL_UP);
             }
         });
@@ -119,13 +132,23 @@ export class Game {
         // Wave complete — show shop
         this.app.on('wave:complete', (_waveIndex: number) => {
             if (this.state === GameState.PLAYING) {
+                this.audioManager.playSfx('waveStart');
                 this.setState(GameState.WAVE_END);
             }
         });
 
         // Player died
         this.app.on('player:died', () => {
+            this.audioManager.stopMusic();
+            this.audioManager.playMusic('gameover');
             this.setState(GameState.GAME_OVER);
+        });
+
+        // Player hit
+        this.app.on('damage:dealt', (entity: pc.Entity, _damage: number, _armorHit: boolean) => {
+            if (entity && entity.tags && entity.tags.has('player')) {
+                this.audioManager.playSfx('playerHit');
+            }
         });
     }
 
@@ -133,6 +156,11 @@ export class Game {
         const oldState = this.state;
         this.state = newState;
         this.uiManager.onStateChange(oldState, newState);
+
+        // Handle music transitions
+        if (newState === GameState.MAIN_MENU && oldState !== GameState.LOADING) {
+            this.audioManager.playMusic('menu');
+        }
     }
 
     selectCharacter(characterId: string): void {
@@ -185,10 +213,17 @@ export class Game {
         }
 
         this.setState(GameState.PLAYING);
+
+        // Start character-specific game music
+        this.audioManager.playGameMusic(characterId);
     }
 
     selectUpgrade(upgradeId: string): void {
         this.upgradeSystem.applyUpgrade(upgradeId, this.playerStats);
+
+        // Stop level up SFX and resume game music
+        this.audioManager.stopAllSfx();
+        this.audioManager.resumeMusic();
 
         // Apply speed to player controller
         if (this.playerEntity?.script) {
@@ -210,6 +245,9 @@ export class Game {
 
     buyItem(itemId: string): boolean {
         const success = this.shopSystem.buy(itemId, this.playerStats);
+        if (success) {
+            this.audioManager.playSfx('shopBuy');
+        }
         if (success && this.playerEntity?.script) {
             // Apply stat changes to scripts
             const controller = this.playerEntity.script.get('playerController') as any;
@@ -226,6 +264,7 @@ export class Game {
 
     continueToNextWave(): void {
         if (this.state === GameState.WAVE_END) {
+            this.audioManager.stopAllSfx();
             this.setState(GameState.PLAYING);
         }
     }
