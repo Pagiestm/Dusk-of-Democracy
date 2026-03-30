@@ -110,6 +110,7 @@ export function createPlayer(app: pc.Application, characterDef: CharacterDef): p
                 const modelEntity = (containerAsset.resource as pc.ContainerResource).instantiateRenderEntity();
                 const s = characterDef.modelScale ?? 0.01;
                 modelEntity.setLocalScale(s, s, s);
+                modelEntity.setLocalPosition(0, characterDef.modelYOffset ?? 0, 0);
                 entity.addChild(modelEntity);
 
                 setupAnimations(entity, modelEntity, idleAsset, runAsset, dieAsset);
@@ -130,6 +131,7 @@ export function createPlayer(app: pc.Application, characterDef: CharacterDef): p
                 const modelEntity = resource.instantiateRenderEntity();
                 const s = characterDef.modelScale ?? 0.01;
                 modelEntity.setLocalScale(s, s, s);
+                modelEntity.setLocalPosition(0, characterDef.modelYOffset ?? 0, 0);
                 entity.addChild(modelEntity);
             });
             app.assets.load(containerAsset);
