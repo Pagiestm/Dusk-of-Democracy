@@ -73,6 +73,11 @@ Ce document liste les principales contributions de chaque membre du projet.
   - Continue la création de la map
   - Création du game concept sur Canva
   - Date de sortie et prix
+ 
+-  **30/03/2026**
+  - Terminer la création de la map
+  - Ajout des collisions sur les bâtiments
+  - Ajout des lumières 
 
 > Pour toute nouvelle contribution, ajouter une ligne ci-dessous avec la date, l'auteur et le détail de la modification.
 
