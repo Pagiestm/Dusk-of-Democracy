@@ -68,6 +68,10 @@ Ce document liste les principales contributions de chaque membre du projet.
   - Création du dossier `public/assets/shared/` comme socle commun d'animations Mixamo réutilisables entre personnages
   - Ajout et intégration du personnage Nicolas Maduro : modèle 3D statique (mesh sans squelette), scale adapté
   - Ajout du champ `modelScale` dans `CharacterDef` pour gérer les différentes unités des modèles GLB (cm vs m)
+  - fix : reset du cycle jour/nuit (`timeOfDay`, `nightFactor`, script `DayNightCycle`) au redémarrage d'une partie pour ne plus rester en mode nuit
+  - feat : ajout du champ `modelYOffset` dans `CharacterDef` pour corriger le positionnement vertical des modèles GLB selon leur origine mesh ; application dans `PlayerFactory` et `RemotePlayerFactory`
+  - fix : `RemotePlayerFactory` utilisait un scale hardcodé `0.01` au lieu de `charDef.modelScale` — corrigé pour cohérence avec les persos locaux
+  - feat : persistance des réglages audio (volume musique / SFX) via `localStorage` (`dod_musicVolume`, `dod_sfxVolume`)
 
 ## 🌐 Lucas
 
