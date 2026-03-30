@@ -8,7 +8,7 @@ export class CameraFollow extends pc.Script {
     height: number = CAMERA_HEIGHT;
     angle: number = CAMERA_ANGLE;
     followSpeed: number = CAMERA_FOLLOW_SPEED;
-    offset: pc.Vec3 = new pc.Vec3(0, 0, 8); // slight offset behind
+    offset: pc.Vec3 = new pc.Vec3(0, 0, 12); // Derrière le joueur
 
     update(dt: number): void {
         if (!this.target) return;

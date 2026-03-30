@@ -92,8 +92,8 @@ export class Health extends pc.Script {
 
         this.app.fire('entity:died', this.entity);
 
-        // Check if it's the player
-        if (this.entity.tags.has('player')) {
+        // Check if it's the local player (not a remote player)
+        if (this.entity.tags.has('player') && !this.entity.tags.has('remote_player')) {
             this.app.fire('player:died');
         } else if (this.entity.tags.has('enemy')) {
             // Get xpReward from entity data

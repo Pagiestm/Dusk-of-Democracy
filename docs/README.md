@@ -17,6 +17,15 @@ Ce document liste les principales contributions de chaque membre du projet.
   - A aidé Lucas sur le game concept
   - A fait des recherches sur l'implémentation du multi dans le jeu
   - Refactorisation du jeu
+- **30/03/2026**
+  - Implémentation complète du multijoueur avec serveur relay Socket.IO
+  - Synchronisation du cycle jour/nuit, des vagues et du niveau entre tous les joueurs
+  - Système de niveau global partagé avec choix d'amélioration individuel et système "Prêt"
+  - Boutique entre les vagues accessible à tous les joueurs avec or individuel
+  - Statistiques d'éliminations par joueur et par équipe
+  - Amélioration de la fluidité côté client (prédiction de mouvement, interpolation des entités)
+  - Correction de plusieurs bugs multijoueur (désynchronisation, affichage, joueurs morts)
+  - Refactorisation de l'architecture serveur
 
 ## 🛡️ Théo
 
@@ -31,6 +40,15 @@ Ce document liste les principales contributions de chaque membre du projet.
 - **16/03/2026**
   - Recherche des musiques du jeu
   - Bugfixes
+- **30/03/2026**
+  - feat : intégration complète de l'audio (musiques de menu, in-game par personnage, game over)
+  - feat : effets sonores (click UI, mort ennemi, ramassage XP, level up, achat boutique, début de vague, hit joueur, mort joueur)
+  - feat : volume mixer dans le menu pause (musique + SFX avec sliders)
+  - feat : gestion de l'autoplay navigateur (déblocage au premier input utilisateur)
+  - feat : effet fondu au noir lors de la mort du joueur avant l'écran de défaite
+  - fix : timing du SFX de mort joueur (délai avant la musique game over)
+  - fix : intégration audio compatible multijoueur (séquence game over centralisée host/client)
+  - merge : résolution des conflits avec main (Game.ts, UIManager.ts, ui.css)
 
 ## 🛠️ Louis
 
@@ -63,6 +81,11 @@ Ce document liste les principales contributions de chaque membre du projet.
   - Continue la création de la map
   - Création du game concept sur Canva
   - Date de sortie et prix
+ 
+-  **30/03/2026**
+  - Terminer la création de la map
+  - Ajout des collisions sur les bâtiments
+  - Ajout des lumières 
 
 > Pour toute nouvelle contribution, ajouter une ligne ci-dessous avec la date, l'auteur et le détail de la modification.
 

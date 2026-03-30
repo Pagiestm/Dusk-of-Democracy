@@ -8,8 +8,8 @@ export const PLAYER_BASE_HP = 100;
 export const PLAYER_MAGNET_RADIUS = 3;
 
 // === Camera ===
-export const CAMERA_HEIGHT = 20;
-export const CAMERA_ANGLE = -60; // degrees from horizontal
+export const CAMERA_HEIGHT = 8; 
+export const CAMERA_ANGLE = -25; 
 export const CAMERA_FOLLOW_SPEED = 5;
 
 // === Combat ===
@@ -46,6 +46,7 @@ export enum CollisionLayer {
 export enum GameState {
     LOADING = 'loading',
     MAIN_MENU = 'main_menu',
+    LOBBY = 'lobby',
     CHARACTER_SELECT = 'character_select',
     WEAPON_SELECT = 'weapon_select',
     PLAYING = 'playing',
@@ -54,6 +55,9 @@ export enum GameState {
     WAVE_END = 'wave_end',
     GAME_OVER = 'game_over',
 }
+
+// === Network ===
+export const SERVER_URL = 'http://localhost:4000';
 
 // === Collision matrix: which layers collide ===
 export const COLLISION_PAIRS: [CollisionLayer, CollisionLayer][] = [

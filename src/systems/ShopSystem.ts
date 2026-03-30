@@ -95,6 +95,16 @@ export class ShopSystem {
         return true;
     }
 
+    /** Apply an item's effect to given stats without charging gold (used for remote players) */
+    applyItemToStats(itemId: string, stats: PlayerStats): void {
+        const item = this.items.find(i => i.id === itemId);
+        if (item) {
+            item.apply(stats);
+            const state = this.itemStates.get(itemId);
+            if (state) state.timesBought++;
+        }
+    }
+
     reset(): void {
         this.gold = 0;
         this.resetItemStates();

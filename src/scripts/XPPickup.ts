@@ -16,11 +16,29 @@ export class XPPickup extends pc.Script {
         const game = (this.app as any).__game;
         if (game && game.state !== GameState.PLAYING) return;
 
-        const player = this.app.root.findByName('player');
-        if (!player) return;
+        // Find nearest player (supports multiplayer)
+        const players = this.app.root.findByTag('player') as pc.Entity[];
+        if (players.length === 0) return;
 
         const myPos = this.entity.getPosition();
-        const playerPos = player.getPosition();
+        let nearestPlayer: pc.Entity | null = null;
+        let nearestDist = Infinity;
+
+        for (const p of players) {
+            if (!p.enabled) continue; // skip dead players
+            const pp = p.getPosition();
+            const ddx = pp.x - myPos.x;
+            const ddz = pp.z - myPos.z;
+            const d = ddx * ddx + ddz * ddz;
+            if (d < nearestDist) {
+                nearestDist = d;
+                nearestPlayer = p;
+            }
+        }
+
+        if (!nearestPlayer) return;
+
+        const playerPos = nearestPlayer.getPosition();
         const dx = playerPos.x - myPos.x;
         const dz = playerPos.z - myPos.z;
         const dist = Math.sqrt(dx * dx + dz * dz);
@@ -33,7 +51,7 @@ export class XPPickup extends pc.Script {
         }
 
         if (this.attracted && dist > 0.3) {
-            // Move toward player
+            // Move toward nearest player
             const speed = XP_PICKUP_MAGNET_SPEED;
             this.entity.setPosition(
                 myPos.x + (dx / dist) * speed * dt,
