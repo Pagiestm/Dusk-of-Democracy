@@ -20,6 +20,7 @@ import { EnemyAI } from '../scripts/EnemyAI';
 import { Health } from '../scripts/Health';
 import { XPPickup } from '../scripts/XPPickup';
 import { UIManager } from '../ui/UIManager';
+import { AudioManager } from './AudioManager';
 
 const SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz — smoother for clients
 
@@ -83,6 +84,9 @@ export class Game {
     // UI
     uiManager!: UIManager;
 
+    // Audio
+    audioManager: AudioManager;
+
     // Player state
     playerStats: PlayerStats = this.defaultStats();
     selectedCharacter: CharacterDef | null = null;
@@ -114,6 +118,9 @@ export class Game {
         this.upgradeSystem = new UpgradeSystem();
         this.shopSystem = new ShopSystem();
 
+        // Init Audio (before UI — PauseScreen needs audioManager)
+        this.audioManager = new AudioManager();
+
         app.on('update', this.update, this);
 
         this.setupEvents();
@@ -138,6 +145,9 @@ export class Game {
 
         this.initUI();
         this.setState(GameState.MAIN_MENU);
+
+        // Start menu music
+        this.audioManager.playMusic('menu');
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -149,6 +159,7 @@ export class Game {
             if (this.isClient) return;
 
             this.killCount++;
+            this.audioManager.playSfx('enemyDeath');
 
             // Attribute kill to the player who dealt the last hit
             const killerId = (entity as any).__lastAttacker as string | undefined;
@@ -189,21 +200,23 @@ export class Game {
         });
 
         this.app.on('xp:collected', (_amount: number) => {
-            // XPSystem handles it
+            this.audioManager.playSfx('xpPickup');
         });
 
         this.app.on('player:levelup', (_level: number) => {
             if (this.state === GameState.PLAYING) {
+                this.audioManager.pauseMusic();
+                this.audioManager.playSfx('levelup');
                 if (this.isMultiplayerGame && this.isHost) {
                     this.readyPlayers.clear();
                 }
-                // Pause the game for everyone (host sets state, clients follow via snapshot)
                 this.setState(GameState.LEVEL_UP);
             }
         });
 
         this.app.on('wave:complete', (waveIndex: number) => {
             if (this.state === GameState.PLAYING) {
+                this.audioManager.playSfx('waveStart');
                 this.completedWave = waveIndex;
                 // Respawn dead players before wave-end shop
                 if (this.isMultiplayerGame && this.isHost) {
@@ -218,24 +231,32 @@ export class Game {
             }
         });
 
+        // Player died — fade to black, then show defeat screen
         this.app.on('player:died', () => {
             if (this.isMultiplayerGame) {
                 if (this.isHost) {
                     this.hostDead = true;
+                    this.audioManager.playSfx('playerDeath');
                     if (this.playerEntity) {
                         this.playerEntity.enabled = false;
                         this.collisionSystem.unregister(this.playerEntity);
                     }
-                    // Switch camera to a surviving player
                     this.switchCameraToAlivePlayer();
                     if (this.areAllPlayersDead()) {
-                        this.network.sendGameOver();
-                        this.setState(GameState.GAME_OVER);
+                        this.triggerGameOverSequence(true);
                     }
                 }
                 return;
             }
-            this.setState(GameState.GAME_OVER);
+            // Solo death
+            this.triggerGameOverSequence(false);
+        });
+
+        // Player hit SFX
+        this.app.on('damage:dealt', (entity: pc.Entity, _damage: number, _armorHit: boolean) => {
+            if (entity && entity.tags && entity.tags.has('player')) {
+                this.audioManager.playSfx('playerHit');
+            }
         });
     }
 
@@ -276,7 +297,7 @@ export class Game {
 
         // Game over from host
         this.network.onGameOver = () => {
-            this.setState(GameState.GAME_OVER);
+            this.triggerGameOverSequence(false);
         };
 
         // Host: remote player buys a shop item
@@ -312,10 +333,32 @@ export class Game {
     //  STATE
     // ═══════════════════════════════════════════════════════════════════
 
+    /** Shared game-over sequence: fade to black + audio (host sends network event) */
+    private triggerGameOverSequence(isHost: boolean): void {
+        this.audioManager.stopMusic();
+        this.audioManager.playSfx('playerDeath');
+
+        const fade = document.createElement('div');
+        fade.className = 'death-fade';
+        document.getElementById('ui-root')!.appendChild(fade);
+
+        setTimeout(() => {
+            this.audioManager.playMusic('gameover');
+            if (isHost) this.network.sendGameOver();
+            this.setState(GameState.GAME_OVER);
+            fade.remove();
+        }, 1400);
+    }
+
     setState(newState: GameState): void {
         const oldState = this.state;
         this.state = newState;
         this.uiManager.onStateChange(oldState, newState);
+
+        // Handle music transitions
+        if (newState === GameState.MAIN_MENU && oldState !== GameState.LOADING) {
+            this.audioManager.playMusic('menu');
+        }
     }
 
     selectCharacter(characterId: string): void {
@@ -378,6 +421,9 @@ export class Game {
         if (camFollow) camFollow.setTarget(this.playerEntity);
 
         this.setState(GameState.PLAYING);
+
+        // Start character-specific game music
+        this.audioManager.playGameMusic(characterId);
     }
 
     private spawnRemotePlayersOnHost(): void {
@@ -432,6 +478,10 @@ export class Game {
     }
 
     selectUpgrade(upgradeId: string): void {
+        // Stop level up SFX and resume game music
+        this.audioManager.stopAllSfx();
+        this.audioManager.resumeMusic();
+
         if (this.isMultiplayerGame) {
             if (this.isClient) {
                 // Client: send choice to host + apply locally
@@ -481,12 +531,17 @@ export class Game {
             return true; // optimistic — host will validate
         }
         const success = this.shopSystem.buy(itemId, this.playerStats);
-        if (success) this.syncStatsToEntity();
+        if (success) {
+            this.audioManager.playSfx('shopBuy');
+            this.syncStatsToEntity();
+        }
         return success;
     }
 
     continueToNextWave(): void {
         if (this.state !== GameState.WAVE_END) return;
+
+        this.audioManager.stopAllSfx();
 
         if (this.isMultiplayerGame) {
             if (this.isHost) {
@@ -1084,8 +1139,7 @@ export class Game {
 
         // Game over when ALL players are dead
         if (this.areAllPlayersDead()) {
-            this.network.sendGameOver();
-            this.setState(GameState.GAME_OVER);
+            this.triggerGameOverSequence(true);
         }
     }
 
