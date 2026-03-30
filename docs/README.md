@@ -40,6 +40,15 @@ Ce document liste les principales contributions de chaque membre du projet.
 - **16/03/2026**
   - Recherche des musiques du jeu
   - Bugfixes
+- **30/03/2026**
+  - feat : intégration complète de l'audio (musiques de menu, in-game par personnage, game over)
+  - feat : effets sonores (click UI, mort ennemi, ramassage XP, level up, achat boutique, début de vague, hit joueur, mort joueur)
+  - feat : volume mixer dans le menu pause (musique + SFX avec sliders)
+  - feat : gestion de l'autoplay navigateur (déblocage au premier input utilisateur)
+  - feat : effet fondu au noir lors de la mort du joueur avant l'écran de défaite
+  - fix : timing du SFX de mort joueur (délai avant la musique game over)
+  - fix : intégration audio compatible multijoueur (séquence game over centralisée host/client)
+  - merge : résolution des conflits avec main (Game.ts, UIManager.ts, ui.css)
 
 ## 🛠️ Louis
 
