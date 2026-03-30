@@ -1414,6 +1414,15 @@ export class Game {
         this.xpSystem.reset();
         this.upgradeSystem.reset();
         this.shopSystem.reset();
+
+        // Reset day/night cycle to start of day
+        (this.app as any).__timeOfDay = 0;
+        (this.app as any).__nightFactor = 0;
+        const dayNight = this.lightEntity?.script?.get('dayNightCycle') as DayNightCycle | undefined;
+        if (dayNight) {
+            dayNight.timeOfDay = 0;
+            dayNight['applyColors'](0);
+        }
     }
 
     private defaultStats(): PlayerStats {
