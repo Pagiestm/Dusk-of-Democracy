@@ -17,6 +17,7 @@ export const CHARACTERS: CharacterDef[] = [
         speed: 7,
         color: new pc.Color(1, 0.6, 0.2), // orange
         modelPath: 'assets/trump/character.glb',
+        modelScale: 0.013,
         animIdlePath: SHARED_ANIMS.idle,
         animRunPath: SHARED_ANIMS.run,
         animDiePath: SHARED_ANIMS.die,
@@ -30,6 +31,7 @@ export const CHARACTERS: CharacterDef[] = [
         color: new pc.Color(0.2, 0.4, 0.9), // blue
         modelPath: 'assets/kirk/character.glb',
         modelScale: 1,
+        modelYOffset: -0.5,
         animIdlePath: 'assets/kirk/idle.glb',
         animRunPath: 'assets/kirk/running.glb',
         animDiePath: 'assets/kirk/dying.glb',
@@ -43,6 +45,7 @@ export const CHARACTERS: CharacterDef[] = [
         color: new pc.Color(0.9, 0.2, 0.2), // red
         modelPath: 'assets/maduro/character.glb',
         modelScale: 1,
+        modelYOffset: 0,
         // Static mesh (no skeleton) — animations not bound yet
     },
 ];

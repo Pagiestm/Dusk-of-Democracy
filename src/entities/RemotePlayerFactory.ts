@@ -26,7 +26,9 @@ export function createRemotePlayerVisual(
         containerAsset.ready((asset: pc.Asset) => {
             const resource = asset.resource as pc.ContainerResource;
             const modelEntity = resource.instantiateRenderEntity();
-            modelEntity.setLocalScale(0.01, 0.01, 0.01);
+            const s = charDef.modelScale ?? 0.01;
+            modelEntity.setLocalScale(s, s, s);
+            modelEntity.setLocalPosition(0, charDef.modelYOffset ?? 0, 0);
             entity.addChild(modelEntity);
         });
 
