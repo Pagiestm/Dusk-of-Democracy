@@ -84,6 +84,12 @@ export class Health extends pc.Script {
     }
 
     private die(): void {
+        // Play death animation if available (Trump custom model)
+        const modelEntity = (this.entity as any).__modelEntity as pc.Entity | undefined;
+        if (modelEntity && (this.entity as any).__hasAnims) {
+            modelEntity.anim?.baseLayer?.transition('die', 0.1);
+        }
+
         this.app.fire('entity:died', this.entity);
 
         // Check if it's the local player (not a remote player)

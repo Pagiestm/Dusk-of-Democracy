@@ -21,7 +21,11 @@ export interface CharacterDef {
     startingWeaponId?: string; // kept for reference, player now picks their own
     color: pc.Color; // placeholder color until models are loaded
     modelPath?: string;
+    modelScale?: number; // scale factor for the GLB model (default: 0.01 for Mixamo cm→m)
     texturePath?: string;
+    animIdlePath?: string;
+    animRunPath?: string;
+    animDiePath?: string;
 }
 
 // === Weapons ===
