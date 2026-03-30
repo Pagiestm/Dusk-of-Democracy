@@ -41,6 +41,9 @@ export const CHARACTERS: CharacterDef[] = [
         hp: 120,
         speed: 8,
         color: new pc.Color(0.9, 0.2, 0.2), // red
+        modelPath: 'assets/maduro/character.glb',
+        modelScale: 1,
+        // Static mesh (no skeleton) — animations not bound yet
     },
 ];
 

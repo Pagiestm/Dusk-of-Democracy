@@ -40,8 +40,16 @@ Ce document liste les principales contributions de chaque membre du projet.
   - feat : ajout du mesh de Trump (issue #5).
 - **16/03/2026**
   - Gestion des assets
-  - Implémentation des animations avec mixamo 
+  - Implémentation des animations avec mixamo
   - Création de la vidéo
+- **30/03/2026**
+  - Intégration des animations GLB (idle, running, dying) pour le personnage Trump via PlayCanvas `anim` component avec state graph
+  - Résolution du root motion (déplacement parasite du bone Hips) sur les fichiers GLB par script Python de modification binaire
+  - Diagnostic et correction de la sélection d'animation dans les GLB multi-animations Blender/Mixamo (heuristique durée idle/run/die)
+  - Ajout et intégration du personnage Charlie Kirk : modèle 3D, animations propres, scale adapté (modèle en mètres)
+  - Création du dossier `public/assets/shared/` comme socle commun d'animations Mixamo réutilisables entre personnages
+  - Ajout et intégration du personnage Nicolas Maduro : modèle 3D statique (mesh sans squelette), scale adapté
+  - Ajout du champ `modelScale` dans `CharacterDef` pour gérer les différentes unités des modèles GLB (cm vs m)
 
 ## 🌐 Lucas
 
