@@ -8,8 +8,8 @@ export const PLAYER_BASE_HP = 100;
 export const PLAYER_MAGNET_RADIUS = 3;
 
 // === Camera ===
-export const CAMERA_HEIGHT = 20;
-export const CAMERA_ANGLE = -60; // degrees from horizontal
+export const CAMERA_HEIGHT = 8; 
+export const CAMERA_ANGLE = -25; 
 export const CAMERA_FOLLOW_SPEED = 5;
 
 // === Combat ===

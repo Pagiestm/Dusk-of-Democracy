@@ -21,9 +21,9 @@ export class DayNightCycle extends pc.Script {
     private readonly SKY_DUSK  = new pc.Color(0.60, 0.22, 0.05);  // orangé crépuscule
     private readonly SKY_NIGHT = new pc.Color(0.01, 0.02, 0.08);  // noir profond
 
-    // Lumière ambiante
+    // Lumière ambiante (bien visible même la nuit)
     private readonly AMB_DAY   = new pc.Color(0.50, 0.50, 0.55);
-    private readonly AMB_NIGHT = new pc.Color(0.03, 0.03, 0.12);
+    private readonly AMB_NIGHT = new pc.Color(0.25, 0.25, 0.35); // Assez clair pour tout voir
 
     // Soleil / Lune
     private readonly SUN_DAY   = new pc.Color(1.00, 0.95, 0.80);
@@ -87,14 +87,13 @@ export class DayNightCycle extends pc.Script {
                 ? this.lerpColor(this.SUN_DAY,  this.SUN_DUSK,  nf * 2)
                 : this.lerpColor(this.SUN_DUSK, this.SUN_NIGHT, (nf - 0.5) * 2);
             light.color     = sunColor;
-            light.intensity = pc.math.lerp(1.5, 0.35, nf);
+            light.intensity = pc.math.lerp(1.5, 0.8, nf); // Nuit moins sombre
         }
 
-        // Torche du joueur : s'allume progressivement dès le crépuscule
-        const torch = this.app.root.findByName('player_torch') as pc.Entity | null;
-        const torchLight = (torch as pc.Entity | null)?.light;
-        if (torchLight) {
-            torchLight.intensity = pc.math.lerp(0, 3.0, nf);
+        // Petite lumière bleutée sous le joueur (s'allume la nuit)
+        const playerGlow = this.app.root.findByName('player_glow') as pc.Entity | null;
+        if (playerGlow?.light) {
+            playerGlow.light.intensity = pc.math.lerp(0, 1.8, nf);
         }
     }
 
