@@ -16,6 +16,7 @@ export class HUDScreen {
     private timerDisplay:   HTMLElement | null = null;
     private killDisplay:    HTMLElement | null = null;
     private goldDisplay:    HTMLElement | null = null;
+    private spectatorOverlay: HTMLElement = document.createElement('div');
 
     constructor(private game: Game, root: HTMLElement) {
         this.el = document.createElement('div');
@@ -98,9 +99,18 @@ export class HUDScreen {
         right.appendChild(this.goldDisplay);
         right.appendChild(this.dayNightDisplay);
 
+        // Spectator overlay
+        this.spectatorOverlay = document.createElement('div');
+        this.spectatorOverlay.className = 'spectator-overlay hidden';
+        this.spectatorOverlay.innerHTML = `
+            <div class="spectator-text">SPECTATEUR</div>
+            <div class="spectator-sub">Vous reapparaitrez a la prochaine vague</div>
+        `;
+
         this.el.appendChild(left);
         this.el.appendChild(center);
         this.el.appendChild(right);
+        this.el.appendChild(this.spectatorOverlay);
         root.appendChild(this.el);
     }
 
@@ -143,7 +153,11 @@ export class HUDScreen {
             this.timerDisplay.textContent = this.formatTime(game.getGameTime());
         }
         if (this.killDisplay) {
-            this.killDisplay.textContent = `Eliminations: ${game.getKillCount()}`;
+            if (game.isMultiplayerGame) {
+                this.killDisplay.textContent = `Eliminations: ${game.getKillCount()} (Equipe: ${game.getTeamKillCount()})`;
+            } else {
+                this.killDisplay.textContent = `Eliminations: ${game.getKillCount()}`;
+            }
         }
         if (this.goldDisplay) {
             this.goldDisplay.textContent = `Or: ${game.getGold()}`;
@@ -164,6 +178,13 @@ export class HUDScreen {
                 this.dayNightDisplay.className = `day-night-display ${cls}`;
             }
             this.dayNightDisplay.textContent = `${icon} ${label}`;
+        }
+
+        // Spectator overlay
+        if (this.game.isSpectating()) {
+            this.spectatorOverlay.classList.remove('hidden');
+        } else {
+            this.spectatorOverlay.classList.add('hidden');
         }
     }
 

@@ -82,7 +82,13 @@ export class CharacterSelectScreen {
         const backBtn = document.createElement('button');
         backBtn.className = 'menu-btn sel-back-btn';
         backBtn.innerHTML = `← RETOUR`;
-        backBtn.onclick = () => game.setState(GameState.MAIN_MENU);
+        backBtn.onclick = () => {
+            if (game.isMultiplayerGame) {
+                game.setState(GameState.LOBBY);
+            } else {
+                game.setState(GameState.MAIN_MENU);
+            }
+        };
         content.appendChild(backBtn);
 
         this.el.appendChild(content);

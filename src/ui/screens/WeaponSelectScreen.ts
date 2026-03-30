@@ -30,7 +30,7 @@ export class WeaponSelectScreen {
         overlay.className = 'menu-overlay sel-overlay';
         this.el.appendChild(overlay);
 
-        // Dynamic content wrapper — rebuilt on each show()
+        // Dynamic content wrapper
         this.wrapper = document.createElement('div');
         this.wrapper.className = 'sel-dynamic-content';
         this.el.appendChild(this.wrapper);
@@ -82,7 +82,7 @@ export class WeaponSelectScreen {
 
         header.innerHTML = `
             ${bannerHtml}
-            <div class="sel-step">ÉTAPE 2 · 2</div>
+            <div class="sel-step">ETAPE 2 · 2</div>
             <h2 class="sel-title">Choisis ton arme</h2>
             <div class="sel-rule"></div>
         `;
@@ -107,12 +107,20 @@ export class WeaponSelectScreen {
                 <div class="sel-weapon-name">${weapon.name}</div>
                 <p class="sel-weapon-desc">${weapon.description}</p>
                 <div class="sel-weapon-stats">
-                    <div class="sel-w-stat"><span class="sel-w-label">Dégâts</span><span class="sel-w-val">${weapon.damage}</span></div>
+                    <div class="sel-w-stat"><span class="sel-w-label">Degats</span><span class="sel-w-val">${weapon.damage}</span></div>
                     <div class="sel-w-stat"><span class="sel-w-label">Cadence</span><span class="sel-w-val">${weapon.cooldown}s</span></div>
                     <div class="sel-w-stat"><span class="sel-w-label">DPS</span><span class="sel-w-val">${dpsLabel}</span></div>
                 </div>
             `;
-            card.onclick = () => { if (char) this.game.startGame(char.id, weapon.id); };
+            card.onclick = () => {
+                if (char) {
+                    this.game.selectWeapon(weapon.id);
+                    // In multi, show waiting overlay
+                    if (this.game.isMultiplayerGame) {
+                        this.showWaiting();
+                    }
+                }
+            };
             grid.appendChild(card);
         }
         content.appendChild(grid);
@@ -125,5 +133,16 @@ export class WeaponSelectScreen {
         content.appendChild(backBtn);
 
         this.wrapper.appendChild(content);
+    }
+
+    private showWaiting(): void {
+        this.wrapper.innerHTML = `
+            <div class="sel-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;">
+                <h2 class="sel-title" style="margin-bottom:1rem;">En attente des autres joueurs...</h2>
+                <div class="lobby-waiting" style="font-size:1.2rem;opacity:0.7;">
+                    La partie commencera automatiquement quand tout le monde sera pret.
+                </div>
+            </div>
+        `;
     }
 }

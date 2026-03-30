@@ -32,11 +32,22 @@ export class Health extends pc.Script {
         }
 
         this.flashDamage(armorHit);
+        this.updateHealthBar();
         this.app.fire('damage:dealt', this.entity, amount, armorHit);
 
         if (this.hp <= 0) {
             this.hp = 0;
             this.die();
+        }
+    }
+
+    /** Update the 3D health bar above the entity (if present) */
+    private updateHealthBar(): void {
+        const bar = (this.entity as any).__healthBarFg;
+        const baseScale = (this.entity as any).__healthBarScale;
+        if (bar && baseScale) {
+            const ratio = Math.max(0, this.hp / this.maxHp);
+            bar.setLocalScale(baseScale * ratio, bar.getLocalScale().y, bar.getLocalScale().z);
         }
     }
 
@@ -86,8 +97,8 @@ export class Health extends pc.Script {
     private die(): void {
         this.app.fire('entity:died', this.entity);
 
-        // Check if it's the player
-        if (this.entity.tags.has('player')) {
+        // Check if it's the local player (not a remote player)
+        if (this.entity.tags.has('player') && !this.entity.tags.has('remote_player')) {
             this.app.fire('player:died');
         } else if (this.entity.tags.has('enemy')) {
             // Get xpReward from entity data

@@ -29,11 +29,11 @@ export class MainMenuScreen {
         const logoWrap = document.createElement('div');
         logoWrap.className = 'menu-logo-wrap';
         logoWrap.innerHTML = `
-            <div class="menu-eyebrow">— SURVIVRE OU DISPARAÎTRE —</div>
+            <div class="menu-eyebrow">— SURVIVRE OU DISPARAITRE —</div>
             <div class="menu-title-top">DUSK OF</div>
             <div class="menu-title-main">DEMOCRACY</div>
             <div class="menu-title-rule"></div>
-            <div class="menu-title-sub">Quand la démocratie tombe, le chaos se lève</div>
+            <div class="menu-title-sub">Quand la democratie tombe, le chaos se leve</div>
         `;
         content.appendChild(logoWrap);
 
@@ -41,11 +41,24 @@ export class MainMenuScreen {
         const btnGroup = document.createElement('div');
         btnGroup.className = 'menu-btn-group';
 
-        const playBtn = document.createElement('button');
-        playBtn.className = 'menu-btn menu-btn-primary';
-        playBtn.innerHTML = `<span class="menu-btn-arrow">▶</span> JOUER`;
-        playBtn.onclick = () => game.setState(GameState.CHARACTER_SELECT);
-        btnGroup.appendChild(playBtn);
+        const soloBtn = document.createElement('button');
+        soloBtn.className = 'menu-btn menu-btn-primary';
+        soloBtn.innerHTML = `<span class="menu-btn-icon">▶</span> JOUER EN SOLO`;
+        soloBtn.onclick = () => {
+            game.isMultiplayerGame = false;
+            game.setState(GameState.CHARACTER_SELECT);
+        };
+        btnGroup.appendChild(soloBtn);
+
+        const multiBtn = document.createElement('button');
+        multiBtn.className = 'menu-btn menu-btn-multi';
+        multiBtn.innerHTML = `<span class="menu-btn-icon">⚔</span> MULTIJOUEUR`;
+        multiBtn.onclick = () => {
+            game.isMultiplayerGame = true;
+            game.setState(GameState.LOBBY);
+        };
+        btnGroup.appendChild(multiBtn);
+
         content.appendChild(btnGroup);
 
         // Version tag
