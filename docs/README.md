@@ -100,10 +100,9 @@ Ce document liste les principales contributions de chaque membre du projet.
 
 Pour la prochaine session de travail, les éléments suivants sont prévus :
 
-- Développement de la map
+- Intégration de la map
 - Développement des animations
-- Intégration des musiques dans le jeu
-- Développement du multijoueur
+- Fix bugs
 
 ---
 
