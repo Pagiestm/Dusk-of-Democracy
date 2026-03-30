@@ -17,6 +17,15 @@ Ce document liste les principales contributions de chaque membre du projet.
   - A aidé Lucas sur le game concept
   - A fait des recherches sur l'implémentation du multi dans le jeu
   - Refactorisation du jeu
+- **30/03/2026**
+  - Implémentation complète du multijoueur avec serveur relay Socket.IO
+  - Synchronisation du cycle jour/nuit, des vagues et du niveau entre tous les joueurs
+  - Système de niveau global partagé avec choix d'amélioration individuel et système "Prêt"
+  - Boutique entre les vagues accessible à tous les joueurs avec or individuel
+  - Statistiques d'éliminations par joueur et par équipe
+  - Amélioration de la fluidité côté client (prédiction de mouvement, interpolation des entités)
+  - Correction de plusieurs bugs multijoueur (désynchronisation, affichage, joueurs morts)
+  - Refactorisation de l'architecture serveur
 
 ## 🛡️ Théo
 
