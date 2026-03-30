@@ -236,38 +236,20 @@ export class Game {
             if (this.isMultiplayerGame) {
                 if (this.isHost) {
                     this.hostDead = true;
+                    this.audioManager.playSfx('playerDeath');
                     if (this.playerEntity) {
                         this.playerEntity.enabled = false;
                         this.collisionSystem.unregister(this.playerEntity);
                     }
                     this.switchCameraToAlivePlayer();
                     if (this.areAllPlayersDead()) {
-                        this.audioManager.stopMusic();
-                        this.audioManager.playSfx('playerDeath');
-                        const fade = document.createElement('div');
-                        fade.className = 'death-fade';
-                        document.getElementById('ui-root')!.appendChild(fade);
-                        setTimeout(() => {
-                            this.audioManager.playMusic('gameover');
-                            this.network.sendGameOver();
-                            this.setState(GameState.GAME_OVER);
-                            fade.remove();
-                        }, 1400);
+                        this.triggerGameOverSequence(true);
                     }
                 }
                 return;
             }
             // Solo death
-            this.audioManager.stopMusic();
-            this.audioManager.playSfx('playerDeath');
-            const fade = document.createElement('div');
-            fade.className = 'death-fade';
-            document.getElementById('ui-root')!.appendChild(fade);
-            setTimeout(() => {
-                this.audioManager.playMusic('gameover');
-                this.setState(GameState.GAME_OVER);
-                fade.remove();
-            }, 1400);
+            this.triggerGameOverSequence(false);
         });
 
         // Player hit SFX
@@ -315,7 +297,7 @@ export class Game {
 
         // Game over from host
         this.network.onGameOver = () => {
-            this.setState(GameState.GAME_OVER);
+            this.triggerGameOverSequence(false);
         };
 
         // Host: remote player buys a shop item
@@ -350,6 +332,23 @@ export class Game {
     // ═══════════════════════════════════════════════════════════════════
     //  STATE
     // ═══════════════════════════════════════════════════════════════════
+
+    /** Shared game-over sequence: fade to black + audio (host sends network event) */
+    private triggerGameOverSequence(isHost: boolean): void {
+        this.audioManager.stopMusic();
+        this.audioManager.playSfx('playerDeath');
+
+        const fade = document.createElement('div');
+        fade.className = 'death-fade';
+        document.getElementById('ui-root')!.appendChild(fade);
+
+        setTimeout(() => {
+            this.audioManager.playMusic('gameover');
+            if (isHost) this.network.sendGameOver();
+            this.setState(GameState.GAME_OVER);
+            fade.remove();
+        }, 1400);
+    }
 
     setState(newState: GameState): void {
         const oldState = this.state;
@@ -1140,8 +1139,7 @@ export class Game {
 
         // Game over when ALL players are dead
         if (this.areAllPlayersDead()) {
-            this.network.sendGameOver();
-            this.setState(GameState.GAME_OVER);
+            this.triggerGameOverSequence(true);
         }
     }
 
