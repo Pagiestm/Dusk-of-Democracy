@@ -124,7 +124,9 @@ export class WaveSystem {
         const def = this.spawnQueue.pop();
         if (!def) return;
 
-        const player    = this.app.root.findByName('player');
+        // Pick a random player to spawn enemies around (supports multiplayer)
+        const players   = this.app.root.findByTag('player') as pc.Entity[];
+        const player    = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : null;
         const playerPos = player ? player.getPosition() : new pc.Vec3(0, 0, 0);
 
         const angle    = Math.random() * Math.PI * 2;

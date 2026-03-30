@@ -3,6 +3,7 @@ import { GameState } from '../constants';
 import type { Game } from '../core/Game';
 
 import { MainMenuScreen }        from './screens/MainMenuScreen';
+import { LobbyScreen }           from './screens/LobbyScreen';
 import { CharacterSelectScreen } from './screens/CharacterSelectScreen';
 import { WeaponSelectScreen }    from './screens/WeaponSelectScreen';
 import { HUDScreen }             from './screens/HUDScreen';
@@ -16,6 +17,7 @@ export class UIManager {
     private root: HTMLElement;
 
     private mainMenu:     MainMenuScreen;
+    private lobby:        LobbyScreen;
     private charSelect:   CharacterSelectScreen;
     private weaponSelect: WeaponSelectScreen;
     private hud:          HUDScreen;
@@ -30,6 +32,7 @@ export class UIManager {
         const root = this.root;
 
         this.mainMenu     = new MainMenuScreen(game, root);
+        this.lobby        = new LobbyScreen(game, root);
         this.charSelect   = new CharacterSelectScreen(game, root);
         this.weaponSelect = new WeaponSelectScreen(game, root);
         this.hud          = new HUDScreen(game, root);
@@ -41,10 +44,7 @@ export class UIManager {
         this.setupFloatingDamage();
     }
 
-    // ─── State Management ─────────────────────────────────────────────────────
-
     onStateChange(oldState: GameState, newState: GameState): void {
-        // Stop animated backgrounds when leaving those screens
         if (oldState === GameState.MAIN_MENU)       this.mainMenu.hide();
         if (oldState === GameState.CHARACTER_SELECT) this.charSelect.hide();
         if (oldState === GameState.WEAPON_SELECT)    this.weaponSelect.hide();
@@ -54,6 +54,9 @@ export class UIManager {
         switch (newState) {
             case GameState.MAIN_MENU:
                 this.mainMenu.show();
+                break;
+            case GameState.LOBBY:
+                this.lobby.show();
                 break;
             case GameState.CHARACTER_SELECT:
                 this.charSelect.show();
@@ -82,16 +85,94 @@ export class UIManager {
         }
     }
 
-    // ─── HUD ──────────────────────────────────────────────────────────────────
-
     updateHUD(): void {
         this.hud.update();
+        this.updateNametags();
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    /** Show the level-up overlay without changing game state (multiplayer) */
+    showLevelUpOverlay(): void {
+        this.levelUp.show();
+    }
+
+    /** Hide the level-up overlay (multiplayer) */
+    hideLevelUpOverlay(): void {
+        this.levelUp.hide();
+    }
+
+    // ─── Player Nametags ────────────────────────────────────────────────
+
+    private nametagEls: Map<string, HTMLElement> = new Map();
+
+    private updateNametags(): void {
+        const game = this.game;
+        if (!game.isMultiplayerGame) return;
+
+        const cameraNode = game.app.root.findByName('camera') as pc.Entity | null;
+        if (!cameraNode?.camera) return;
+
+        const activeTags = new Set<string>();
+
+        // All players in the room
+        for (const p of game.network.roomPlayers) {
+            const tag = `nametag_${p.id}`;
+            activeTags.add(tag);
+
+            // Find the entity (local player or remote)
+            let entity: pc.Entity | null = null;
+            if (p.id === game.network.myId) {
+                entity = game.getPlayerEntity();
+            } else {
+                entity = game.getClientPlayerEntities().get(p.id)
+                    || game.getRemotePlayerEntities().get(p.id)
+                    || null;
+            }
+
+            if (!entity || !entity.enabled) {
+                // Entity missing or dead — hide nametag
+                const el = this.nametagEls.get(tag);
+                if (el) el.style.display = 'none';
+                continue;
+            }
+
+            const worldPos = entity.getPosition();
+            const screenPos = cameraNode.camera.worldToScreen(
+                new pc.Vec3(worldPos.x, worldPos.y + 1.8, worldPos.z)
+            );
+
+            if (screenPos.z < 0) {
+                // Behind camera
+                const el = this.nametagEls.get(tag);
+                if (el) el.style.display = 'none';
+                continue;
+            }
+
+            let el = this.nametagEls.get(tag);
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'player-nametag';
+                this.root.appendChild(el);
+                this.nametagEls.set(tag, el);
+            }
+
+            el.textContent = p.name;
+            el.style.display = '';
+            el.style.left = `${screenPos.x}px`;
+            el.style.top = `${screenPos.y}px`;
+        }
+
+        // Remove stale nametags
+        for (const [tag, el] of this.nametagEls) {
+            if (!activeTags.has(tag)) {
+                el.remove();
+                this.nametagEls.delete(tag);
+            }
+        }
+    }
 
     private hideAll(): void {
         this.mainMenu.hide();
+        this.lobby.hide();
         this.charSelect.hide();
         this.weaponSelect.hide();
         this.hud.hide();
@@ -99,9 +180,11 @@ export class UIManager {
         this.pause.hide();
         this.waveEnd.hide();
         this.gameOver.hide();
+        // Clean nametags
+        for (const el of this.nametagEls.values()) el.remove();
+        this.nametagEls.clear();
     }
 
-    // === Floating Damage Text ===
     private setupFloatingDamage(): void {
         const app = this.game.app;
 
@@ -112,16 +195,27 @@ export class UIManager {
             if (!cameraNode || !cameraNode.camera) return;
 
             const worldPos = entity.getPosition();
-            // Petit offset vertical pour que le texte apparaisse au dessus
             const screenPos = cameraNode.camera.worldToScreen(new pc.Vec3(worldPos.x, worldPos.y + 1.5, worldPos.z));
 
-            if (screenPos.z < 0) return; // derriere la camera
+            if (screenPos.z < 0) return;
 
             const color = armorAbsorbed ? '#6688cc' : '#ff4444';
-            const text = `-${damage}`;
-
-            this.spawnFloatingText(text, screenPos.x, screenPos.y, color);
+            this.spawnFloatingText(`-${damage}`, screenPos.x, screenPos.y, color);
         });
+    }
+
+    /** Show floating damage text at a world position (used by clients from snapshot data) */
+    showDamageAtWorldPos(worldX: number, worldZ: number, damage: number, armorAbsorbed: boolean): void {
+        const cameraNode = this.game.app.root.findByName('camera') as pc.Entity | null;
+        if (!cameraNode?.camera) return;
+
+        const screenPos = cameraNode.camera.worldToScreen(
+            new pc.Vec3(worldX, 1.5, worldZ)
+        );
+        if (screenPos.z < 0) return;
+
+        const color = armorAbsorbed ? '#6688cc' : '#ff4444';
+        this.spawnFloatingText(`-${damage}`, screenPos.x, screenPos.y, color);
     }
 
     private spawnFloatingText(text: string, x: number, y: number, color: string): void {
@@ -133,7 +227,6 @@ export class UIManager {
         el.style.color = color;
         this.root.appendChild(el);
 
-        // Animer vers le haut + fade out
         let elapsed = 0;
         const duration = 800;
         const startY = y;
@@ -143,7 +236,6 @@ export class UIManager {
             const progress = elapsed / duration;
             el.style.top = `${startY - progress * 50}px`;
             el.style.opacity = `${1 - progress}`;
-
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
