@@ -29,9 +29,12 @@ const SFX = {
 type MusicKey = keyof typeof MUSIC;
 type SfxKey = keyof typeof SFX;
 
+const LS_MUSIC_VOL = 'dod_musicVolume';
+const LS_SFX_VOL   = 'dod_sfxVolume';
+
 export class AudioManager {
-    private musicVolume = 0.4;
-    private sfxVolume = 0.6;
+    private musicVolume = parseFloat(localStorage.getItem(LS_MUSIC_VOL) ?? '0.4');
+    private sfxVolume   = parseFloat(localStorage.getItem(LS_SFX_VOL)   ?? '0.6');
 
     private currentMusic: HTMLAudioElement | null = null;
     private currentMusicKey: MusicKey | null = null;
@@ -160,10 +163,12 @@ export class AudioManager {
         if (this.currentMusic) {
             this.currentMusic.volume = this.musicVolume;
         }
+        localStorage.setItem(LS_MUSIC_VOL, String(this.musicVolume));
     }
 
     setSfxVolume(v: number): void {
         this.sfxVolume = Math.max(0, Math.min(1, v));
+        localStorage.setItem(LS_SFX_VOL, String(this.sfxVolume));
     }
 
     getMusicVolume(): number { return this.musicVolume; }
