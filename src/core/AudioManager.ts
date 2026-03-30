@@ -22,7 +22,8 @@ const SFX = {
     levelup:    `${MUSIC_BASE}levelup.mp3`,
     shopBuy:    `${MUSIC_BASE}shop-buy.mp3`,
     waveStart:  `${MUSIC_BASE}wave-start.mp3`,
-    playerHit:  `${MUSIC_BASE}player-hit.mp3`,
+    playerHit:   `${MUSIC_BASE}player-hit.mp3`,
+    playerDeath: `${MUSIC_BASE}player-death.mp3`,
 } as const;
 
 type MusicKey = keyof typeof MUSIC;

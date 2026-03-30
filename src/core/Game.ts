@@ -65,11 +65,11 @@ export class Game {
         this.upgradeSystem = new UpgradeSystem();
         this.shopSystem = new ShopSystem();
 
+        // Init Audio (before UI — PauseScreen needs audioManager)
+        this.audioManager = new AudioManager();
+
         // Init UI
         this.uiManager = new UIManager(this);
-
-        // Init Audio
-        this.audioManager = new AudioManager();
 
         // Register game loop
         app.on('update', this.update, this);
@@ -137,11 +137,22 @@ export class Game {
             }
         });
 
-        // Player died
+        // Player died — fade to black, then show defeat screen
         this.app.on('player:died', () => {
             this.audioManager.stopMusic();
-            this.audioManager.playMusic('gameover');
-            this.setState(GameState.GAME_OVER);
+            this.audioManager.playSfx('playerDeath');
+
+            // Create fade overlay
+            const fade = document.createElement('div');
+            fade.className = 'death-fade';
+            document.getElementById('ui-root')!.appendChild(fade);
+
+            // After fade completes (1.2s), show defeat screen + music
+            setTimeout(() => {
+                this.audioManager.playMusic('gameover');
+                this.setState(GameState.GAME_OVER);
+                fade.remove();
+            }, 1400);
         });
 
         // Player hit
