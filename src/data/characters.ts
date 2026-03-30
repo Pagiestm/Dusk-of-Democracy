@@ -9,7 +9,10 @@ export const CHARACTERS: CharacterDef[] = [
         hp: 150,
         speed: 7,
         color: new pc.Color(1, 0.6, 0.2), // orange
-        modelPath: 'assets/models/lowpoly_trump_free_character.glb',
+        modelPath: 'assets/trump/character.glb',
+        animIdlePath: 'assets/trump/idle.glb',
+        animRunPath: 'assets/trump/running.glb',
+        animDiePath: 'assets/trump/dying.glb',
     },
     {
         id: 'kirk',

@@ -22,6 +22,9 @@ export interface CharacterDef {
     color: pc.Color; // placeholder color until models are loaded
     modelPath?: string;
     texturePath?: string;
+    animIdlePath?: string;
+    animRunPath?: string;
+    animDiePath?: string;
 }
 
 // === Weapons ===
