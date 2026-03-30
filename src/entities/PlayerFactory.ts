@@ -3,27 +3,38 @@ import { CharacterDef } from '../types';
 import { PlayerController } from '../scripts/PlayerController';
 import { Health } from '../scripts/Health';
 
-function extractTrack(containerAsset: pc.Asset, preferLongest: boolean): pc.AnimTrack | null {
+type AnimHint = 'idle' | 'run' | 'die';
+
+function extractTrack(containerAsset: pc.Asset, hint: AnimHint): pc.AnimTrack | null {
     const anims = (containerAsset.resource as any)?.animations as pc.Asset[] | undefined;
     if (!anims?.length) return null;
 
-    // Filter out "Take 001" (empty Blender default) and single-frame poses
-    const candidates = anims.filter((a) => {
+    // Filter out empty takes and single-frame poses
+    let candidates = anims.filter((a) => {
         const t = a.resource as pc.AnimTrack | null;
         return t && t.name !== 'Take 001' && t.duration > 0.1;
     });
     if (!candidates.length) return null;
 
-    // For idle/die: pick the longest unique animation.
-    // For run: pick the shortest (a run cycle is typically < 1s).
-    candidates.sort((a, b) => {
-        const da = (a.resource as pc.AnimTrack).duration;
-        const db = (b.resource as pc.AnimTrack).duration;
-        return preferLongest ? db - da : da - db;
-    });
-    const target = candidates[0];
+    let target: pc.Asset;
+    if (hint === 'run') {
+        // Run cycle is the shortest clip (< 2s typically)
+        candidates.sort((a, b) => (a.resource as pc.AnimTrack).duration - (b.resource as pc.AnimTrack).duration);
+        target = candidates[0];
+    } else if (hint === 'idle') {
+        // Idle is the longest clip
+        candidates.sort((a, b) => (b.resource as pc.AnimTrack).duration - (a.resource as pc.AnimTrack).duration);
+        target = candidates[0];
+    } else {
+        // Die: exclude very long clips (> 5s) which are shared noise, then pick the longest
+        const noLong = candidates.filter(a => (a.resource as pc.AnimTrack).duration <= 5);
+        const pool = noLong.length > 0 ? noLong : candidates;
+        pool.sort((a, b) => (b.resource as pc.AnimTrack).duration - (a.resource as pc.AnimTrack).duration);
+        target = pool[0];
+    }
+
     const track = target.resource as pc.AnimTrack;
-    console.log(`[Anim] ${containerAsset.name} → picked "${track?.name}" (${track?.duration}s) from ${anims.length} animations`);
+    console.log(`[Anim] ${containerAsset.name} (${hint}) → "${track?.name}" ${track?.duration?.toFixed(2)}s`);
     return track ?? null;
 }
 
@@ -34,9 +45,9 @@ function setupAnimations(
     runAsset: pc.Asset,
     dieAsset: pc.Asset
 ): void {
-    const idleTrack = extractTrack(idleAsset, true);   // longest = idle
-    const runTrack  = extractTrack(runAsset, false);   // shortest = run cycle
-    const dieTrack  = extractTrack(dieAsset, true);    // longest = die sequence
+    const idleTrack = extractTrack(idleAsset, 'idle');
+    const runTrack  = extractTrack(runAsset,  'run');
+    const dieTrack  = extractTrack(dieAsset,  'die');
 
     if (!idleTrack || !runTrack || !dieTrack) {
         console.warn('[Anim] Missing tracks, animations disabled');
@@ -97,7 +108,8 @@ export function createPlayer(app: pc.Application, characterDef: CharacterDef): p
                 if (++loaded < 4) return;
 
                 const modelEntity = (containerAsset.resource as pc.ContainerResource).instantiateRenderEntity();
-                modelEntity.setLocalScale(0.01, 0.01, 0.01);
+                const s = characterDef.modelScale ?? 0.01;
+                modelEntity.setLocalScale(s, s, s);
                 entity.addChild(modelEntity);
 
                 setupAnimations(entity, modelEntity, idleAsset, runAsset, dieAsset);
@@ -116,7 +128,8 @@ export function createPlayer(app: pc.Application, characterDef: CharacterDef): p
             containerAsset.ready((asset: pc.Asset) => {
                 const resource = asset.resource as pc.ContainerResource;
                 const modelEntity = resource.instantiateRenderEntity();
-                modelEntity.setLocalScale(0.01, 0.01, 0.01);
+                const s = characterDef.modelScale ?? 0.01;
+                modelEntity.setLocalScale(s, s, s);
                 entity.addChild(modelEntity);
             });
             app.assets.load(containerAsset);
