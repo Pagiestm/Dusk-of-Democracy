@@ -59,6 +59,12 @@ export class MainMenuScreen {
         };
         btnGroup.appendChild(multiBtn);
 
+        const scoresBtn = document.createElement('button');
+        scoresBtn.className = 'menu-btn menu-btn-secondary';
+        scoresBtn.innerHTML = `<span class="menu-btn-icon">★</span> MEILLEURS SCORES`;
+        scoresBtn.onclick = () => game.setState(GameState.HIGH_SCORES);
+        btnGroup.appendChild(scoresBtn);
+
         content.appendChild(btnGroup);
 
         // Version tag

@@ -11,6 +11,7 @@ import { LevelUpScreen }         from './screens/LevelUpScreen';
 import { PauseScreen }           from './screens/PauseScreen';
 import { WaveEndScreen }         from './screens/WaveEndScreen';
 import { GameOverScreen }        from './screens/GameOverScreen';
+import { HighScoreScreen }       from './screens/HighScoreScreen';
 
 export class UIManager {
     private game: Game;
@@ -25,6 +26,7 @@ export class UIManager {
     private pause:        PauseScreen;
     private waveEnd:      WaveEndScreen;
     private gameOver:     GameOverScreen;
+    private highScores:   HighScoreScreen;
 
     constructor(game: Game) {
         this.game = game;
@@ -40,6 +42,7 @@ export class UIManager {
         this.pause        = new PauseScreen(game, root);
         this.waveEnd      = new WaveEndScreen(game, root);
         this.gameOver     = new GameOverScreen(game, root);
+        this.highScores   = new HighScoreScreen(game, root);
 
         this.setupFloatingDamage();
         this.setupClickSfx();
@@ -82,6 +85,9 @@ export class UIManager {
                 break;
             case GameState.GAME_OVER:
                 this.gameOver.show();
+                break;
+            case GameState.HIGH_SCORES:
+                this.highScores.show();
                 break;
         }
     }
@@ -181,6 +187,7 @@ export class UIManager {
         this.pause.hide();
         this.waveEnd.hide();
         this.gameOver.hide();
+        this.highScores.hide();
         // Clean nametags
         for (const el of this.nametagEls.values()) el.remove();
         this.nametagEls.clear();

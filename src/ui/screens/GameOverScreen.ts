@@ -1,4 +1,5 @@
 import { GameState } from '../../constants';
+import { HighScoreManager } from '../../core/HighScoreManager';
 import type { Game } from '../../core/Game';
 
 export class GameOverScreen {
@@ -27,9 +28,22 @@ export class GameOverScreen {
         const teamKillLine = isMulti
             ? `<div>Eliminations equipe : ${this.game.getTeamKillCount()}</div>`
             : '';
+
+        // Score line (solo only)
+        let scoreLine = '';
+        if (!isMulti && this.game.lastHighScore) {
+            const entry = this.game.lastHighScore;
+            const rank = HighScoreManager.getRank(entry.score);
+            const rankText = rank > 0 && rank <= 10
+                ? `<span style="color:#f7c948;"> · #${rank} TOP 10</span>`
+                : '';
+            scoreLine = `<div style="color:#ff6b35; font-weight:700; font-size:1.1em;">Score : ${entry.score.toLocaleString()}${rankText}</div>`;
+        }
+
         stats.innerHTML = `
             <h2>DEFAITE</h2>
             <div class="stats-list">
+                ${scoreLine}
                 <div>Temps survecu : ${time}</div>
                 <div>Niveau atteint : ${this.game.getLevel()}</div>
                 <div>Vos eliminations : ${this.game.getKillCount()}</div>

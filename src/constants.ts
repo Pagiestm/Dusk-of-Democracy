@@ -54,6 +54,7 @@ export enum GameState {
     LEVEL_UP = 'level_up',
     WAVE_END = 'wave_end',
     GAME_OVER = 'game_over',
+    HIGH_SCORES = 'high_scores',
 }
 
 // === Network ===

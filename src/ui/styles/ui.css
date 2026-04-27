@@ -1134,3 +1134,126 @@
     align-items: center;
     gap: 10px;
 }
+
+/* === HIGH SCORE SCREEN === */
+.highscore-screen {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, #0a0d14 0%, #131820 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.highscore-screen.hidden {
+    display: none;
+}
+
+.highscore-content {
+    width: min(720px, 92vw);
+    padding: 30px 40px;
+    text-align: center;
+}
+
+.highscore-title {
+    font-size: 38px;
+    letter-spacing: 8px;
+    margin: 0 0 6px 0;
+    color: #f7c948;
+    text-shadow: 0 0 18px rgba(247,201,72,0.4);
+}
+
+.highscore-sub {
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 28px;
+    text-transform: uppercase;
+}
+
+.highscore-empty {
+    padding: 60px 20px;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+}
+
+.highscore-table {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(247,201,72,0.15);
+    margin-bottom: 28px;
+}
+
+.highscore-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 70px 70px 80px 1.5fr;
+    gap: 8px;
+    padding: 12px 18px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 14px;
+}
+
+.highscore-row:last-child {
+    border-bottom: none;
+}
+
+.highscore-header {
+    background: rgba(247,201,72,0.08);
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.highscore-row .hs-rank {
+    color: rgba(255,255,255,0.5);
+    font-weight: 700;
+    text-align: left;
+}
+
+.highscore-row .hs-score {
+    color: #ff6b35;
+    font-weight: 700;
+    text-align: left;
+}
+
+.highscore-row .hs-wave,
+.highscore-row .hs-kills,
+.highscore-row .hs-time {
+    text-align: center;
+    color: rgba(255,255,255,0.85);
+}
+
+.highscore-row .hs-char {
+    text-align: left;
+    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.highscore-row.hs-gold .hs-rank,
+.highscore-row.hs-gold .hs-score {
+    color: #f7c948;
+    text-shadow: 0 0 10px rgba(247,201,72,0.4);
+}
+
+.highscore-row.hs-silver .hs-rank,
+.highscore-row.hs-silver .hs-score {
+    color: #c0c0c0;
+}
+
+.highscore-row.hs-bronze .hs-rank,
+.highscore-row.hs-bronze .hs-score {
+    color: #cd7f32;
+}
+
+.highscore-actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+}

@@ -13,6 +13,7 @@ import { WaveSystem } from '../systems/WaveSystem';
 import { XPSystem } from '../systems/XPSystem';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { ShopSystem } from '../systems/ShopSystem';
+import { HighScoreManager, HighScoreEntry } from './HighScoreManager';
 import { CHARACTERS } from '../data/characters';
 import { WEAPONS } from '../data/weapons';
 import { CameraFollow } from '../scripts/CameraFollow';
@@ -95,6 +96,7 @@ export class Game {
     gameTime: number = 0;
     killCount: number = 0;
     completedWave: number = 0;
+    lastHighScore: HighScoreEntry | null = null;
     private hostKills: number = 0;
     private remotePlayerKills: Map<string, number> = new Map();
     private clientKills: number = 0;
@@ -341,10 +343,27 @@ export class Game {
     //  STATE
     // ═══════════════════════════════════════════════════════════════════
 
+    private gameOverTriggered: boolean = false;
+
     /** Shared game-over sequence: fade to black + audio (host sends network event) */
     private triggerGameOverSequence(isHost: boolean): void {
+        if (this.gameOverTriggered) return;
+        this.gameOverTriggered = true;
+
         this.audioManager.stopMusic();
         this.audioManager.playSfx('playerDeath');
+
+        // Save highscore (solo only)
+        if (!this.isMultiplayerGame) {
+            this.lastHighScore = HighScoreManager.save({
+                wave: this.getWave(),
+                kills: this.getKillCount(),
+                time: this.getGameTime(),
+                level: this.getLevel(),
+                characterId: this.selectedCharacter?.id ?? 'unknown',
+                weaponId: this.selectedWeaponId ?? 'unknown',
+            });
+        }
 
         const fade = document.createElement('div');
         fade.className = 'death-fade';
@@ -1374,6 +1393,8 @@ export class Game {
     // ═══════════════════════════════════════════════════════════════════
 
     private resetGame(): void {
+        this.gameOverTriggered = false;
+        this.lastHighScore = null;
         this.gameTime = 0;
         this.killCount = 0;
         this.completedWave = 0;
