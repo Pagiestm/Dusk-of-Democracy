@@ -1,5 +1,6 @@
 import * as pc from 'playcanvas';
 import { PLAYER_BASE_SPEED, ARENA_HALF, GameState } from '../constants';
+import { AimSettings } from '../core/AimSettings';
 
 export class PlayerController extends pc.Script {
     static scriptName = 'playerController';
@@ -56,9 +57,15 @@ export class PlayerController extends pc.Script {
             this.entity.setPosition(finalX, pos.y, finalZ);
         }
 
-        // Face aim direction
-        if (input.aimDirection.lengthSq() > 0) {
-            const angle = Math.atan2(input.aimDirection.x, input.aimDirection.y) * (180 / Math.PI);
+        // Face aim direction (auto-aim toward nearest enemy if enabled)
+        let aimX = input.aimDirection.x;
+        let aimZ = input.aimDirection.y;
+        if (AimSettings.isAutoAimEnabled()) {
+            const auto = this.findNearestEnemyDir();
+            if (auto) { aimX = auto.x; aimZ = auto.z; }
+        }
+        if (aimX !== 0 || aimZ !== 0) {
+            const angle = Math.atan2(aimX, aimZ) * (180 / Math.PI);
             this.entity.setEulerAngles(0, angle, 0);
         }
 
@@ -75,5 +82,28 @@ export class PlayerController extends pc.Script {
 
     setSpeed(speed: number): void {
         this.speed = speed;
+    }
+
+    private findNearestEnemyDir(): { x: number; z: number } | null {
+        const enemies = this.app.root.findByTag('enemy') as pc.Entity[];
+        if (enemies.length === 0) return null;
+        const myPos = this.entity.getPosition();
+        let nearest: pc.Entity | null = null;
+        let nearestDistSq = Infinity;
+        for (const e of enemies) {
+            if (!e.enabled) continue;
+            const ep = e.getPosition();
+            const dx = ep.x - myPos.x;
+            const dz = ep.z - myPos.z;
+            const d = dx * dx + dz * dz;
+            if (d < nearestDistSq) { nearestDistSq = d; nearest = e; }
+        }
+        if (!nearest) return null;
+        const ep = nearest.getPosition();
+        const dx = ep.x - myPos.x;
+        const dz = ep.z - myPos.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        if (len < 0.01) return null;
+        return { x: dx / len, z: dz / len };
     }
 }

@@ -1,5 +1,6 @@
 import { GameState } from '../../constants';
 import { CameraSettings, CameraMode } from '../../core/CameraSettings';
+import { AimSettings } from '../../core/AimSettings';
 import type { Game } from '../../core/Game';
 
 export class PauseScreen {
@@ -9,6 +10,7 @@ export class PauseScreen {
     private musicLabel!: HTMLSpanElement;
     private sfxLabel!: HTMLSpanElement;
     private cameraButtons: Map<CameraMode, HTMLButtonElement> = new Map();
+    private autoAimToggle!: HTMLInputElement;
 
     constructor(private game: Game, root: HTMLElement) {
         this.el = document.createElement('div');
@@ -78,6 +80,28 @@ export class PauseScreen {
         camSection.appendChild(camBtns);
         this.el.appendChild(camSection);
 
+        // Auto-aim toggle
+        const aimSection = document.createElement('div');
+        aimSection.className = 'camera-mode-section';
+
+        const aimRow = document.createElement('label');
+        aimRow.className = 'aim-toggle-row';
+
+        const aimText = document.createElement('span');
+        aimText.className = 'camera-mode-label';
+        aimText.innerHTML = '🎯 Visée automatique <span style="color:#ff8866; font-size:11px; font-weight:500; letter-spacing:0.5px;">(-15% dégâts · +30% ennemis)</span>';
+        aimRow.appendChild(aimText);
+
+        this.autoAimToggle = document.createElement('input');
+        this.autoAimToggle.type = 'checkbox';
+        this.autoAimToggle.className = 'aim-toggle-checkbox';
+        this.autoAimToggle.checked = AimSettings.isAutoAimEnabled();
+        this.autoAimToggle.onchange = () => AimSettings.setAutoAim(this.autoAimToggle.checked);
+        aimRow.appendChild(this.autoAimToggle);
+
+        aimSection.appendChild(aimRow);
+        this.el.appendChild(aimSection);
+
         const resumeBtn = document.createElement('button');
         resumeBtn.className = 'btn';
         resumeBtn.textContent = 'REPRENDRE';
@@ -100,6 +124,7 @@ export class PauseScreen {
         this.sfxSlider.value = String(this.game.audioManager.getSfxVolume());
         this.sfxLabel.textContent = `${Math.round(this.game.audioManager.getSfxVolume() * 100)}%`;
         this.refreshCameraButtons();
+        this.autoAimToggle.checked = AimSettings.isAutoAimEnabled();
         this.el.classList.remove('hidden');
     }
 

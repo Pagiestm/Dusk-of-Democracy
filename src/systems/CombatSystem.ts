@@ -1,6 +1,7 @@
 import * as pc from 'playcanvas';
 import { WeaponDef } from '../types';
 import { createProjectile } from '../entities/ProjectileFactory';
+import { AimSettings } from '../core/AimSettings';
 
 interface ActiveWeapon {
     def: WeaponDef;
@@ -55,12 +56,21 @@ export class CombatSystem {
             const game = (this.app as any).__game;
             const input = game?.inputManager?.getState();
             if (input) {
+                // Resolve aim: auto-aim toward nearest enemy if enabled, else manual input
+                let aimX = input.aimDirection.x;
+                let aimZ = input.aimDirection.y;
+                if (AimSettings.isAutoAimEnabled()) {
+                    const auto = this.computeAutoAim(this.playerEntity);
+                    if (auto) { aimX = auto.x; aimZ = auto.z; }
+                }
+
+                const finalDamageMult = damageMultiplier * AimSettings.getDamageMultiplier();
                 this.currentOwnerId = game?.network?.myId || null;
                 for (const weapon of this.weapons) {
                     weapon.cooldownTimer -= dt;
                     if (weapon.cooldownTimer <= 0) {
                         weapon.cooldownTimer = weapon.def.cooldown * cooldownMultiplier;
-                        this.fireWeaponFromEntity(this.playerEntity, weapon.def, input.aimDirection.x, input.aimDirection.y, damageMultiplier, extraProjectiles);
+                        this.fireWeaponFromEntity(this.playerEntity, weapon.def, aimX, aimZ, finalDamageMult, extraProjectiles);
                     }
                 }
                 this.currentOwnerId = null;
@@ -95,6 +105,37 @@ export class CombatSystem {
 
     /** Current owner ID to tag on created projectiles */
     private currentOwnerId: string | null = null;
+
+    /** Compute aim direction toward nearest alive enemy. Returns null if no enemy in range. */
+    private computeAutoAim(player: pc.Entity): { x: number; z: number } | null {
+        const enemies = this.app.root.findByTag('enemy') as pc.Entity[];
+        if (enemies.length === 0) return null;
+
+        const myPos = player.getPosition();
+        let nearest: pc.Entity | null = null;
+        let nearestDistSq = Infinity;
+
+        for (const e of enemies) {
+            if (!e.enabled) continue;
+            const ep = e.getPosition();
+            const dx = ep.x - myPos.x;
+            const dz = ep.z - myPos.z;
+            const d = dx * dx + dz * dz;
+            if (d < nearestDistSq) {
+                nearestDistSq = d;
+                nearest = e;
+            }
+        }
+
+        if (!nearest) return null;
+
+        const ep = nearest.getPosition();
+        const dx = ep.x - myPos.x;
+        const dz = ep.z - myPos.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        if (len < 0.01) return null;
+        return { x: dx / len, z: dz / len };
+    }
 
     private fireWeaponFromEntity(
         entity: pc.Entity,
