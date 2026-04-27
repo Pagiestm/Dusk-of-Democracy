@@ -61,17 +61,20 @@ export class EnemyAI extends pc.Script {
       let finalX = myPos.x + dx;
       let finalZ = myPos.z + dz;
 
-      // Raycast collision with buildings
+      // Raycast collision with buildings (skip road colliders so enemies don't get stuck on barriers)
       const rigidbody = this.app.systems.rigidbody;
       if (rigidbody) {
         const origin = new pc.Vec3(myPos.x, myPos.y + 0.3, myPos.z);
+        const rayOptions = {
+          filterCollisionMask: pc.BODYMASK_ALL & ~pc.BODYGROUP_USER_1,
+        };
         if (dx !== 0) {
           const tX = new pc.Vec3(
             myPos.x + dx + Math.sign(dx) * 0.35,
             myPos.y + 0.3,
             myPos.z,
           );
-          if (rigidbody.raycastFirst(origin, tX)) finalX = myPos.x;
+          if (rigidbody.raycastFirst(origin, tX, rayOptions)) finalX = myPos.x;
         }
         if (dz !== 0) {
           const tZ = new pc.Vec3(
@@ -79,7 +82,7 @@ export class EnemyAI extends pc.Script {
             myPos.y + 0.3,
             myPos.z + dz + Math.sign(dz) * 0.35,
           );
-          if (rigidbody.raycastFirst(origin, tZ)) finalZ = myPos.z;
+          if (rigidbody.raycastFirst(origin, tZ, rayOptions)) finalZ = myPos.z;
         }
       }
 

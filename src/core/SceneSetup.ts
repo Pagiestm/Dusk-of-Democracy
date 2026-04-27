@@ -132,12 +132,18 @@ function addPhysicsColliders(app: pc.Application): void {
         const worldY = (entry.p[1] + offsetY) * MAP_SCALE;
         const worldZ = (entry.p[2] + offsetZ) * MAP_SCALE;
 
+        const isRoad = entry.glb.startsWith('road-');
+
         const colEntity = new pc.Entity(`col_${count}`);
         colEntity.setPosition(worldX, worldY, worldZ);
+        if (isRoad) colEntity.tags.add('road-collider');
 
         colEntity.addComponent('rigidbody', {
             type: 'static',
             mass: 0,
+            // Roads go to a dedicated group so enemy raycasts can ignore them
+            group: isRoad ? pc.BODYGROUP_USER_1 : pc.BODYGROUP_STATIC,
+            mask: pc.BODYMASK_ALL,
         });
 
         colEntity.addComponent('collision', {
