@@ -47,11 +47,27 @@ export class EnemyAI extends pc.Script {
 
         if (dist > 0.5) {
             this.dir.normalize();
-            this.entity.setPosition(
-                myPos.x + this.dir.x * effectiveSpeed * dt,
-                myPos.y,
-                myPos.z + this.dir.z * effectiveSpeed * dt
-            );
+            const dx = this.dir.x * effectiveSpeed * dt;
+            const dz = this.dir.z * effectiveSpeed * dt;
+
+            let finalX = myPos.x + dx;
+            let finalZ = myPos.z + dz;
+
+            // Raycast collision with buildings
+            const rigidbody = this.app.systems.rigidbody;
+            if (rigidbody) {
+                const origin = new pc.Vec3(myPos.x, myPos.y + 0.3, myPos.z);
+                if (dx !== 0) {
+                    const tX = new pc.Vec3(myPos.x + dx + Math.sign(dx) * 0.35, myPos.y + 0.3, myPos.z);
+                    if (rigidbody.raycastFirst(origin, tX)) finalX = myPos.x;
+                }
+                if (dz !== 0) {
+                    const tZ = new pc.Vec3(myPos.x, myPos.y + 0.3, myPos.z + dz + Math.sign(dz) * 0.35);
+                    if (rigidbody.raycastFirst(origin, tZ)) finalZ = myPos.z;
+                }
+            }
+
+            this.entity.setPosition(finalX, myPos.y, finalZ);
         }
 
         // Face nearest player

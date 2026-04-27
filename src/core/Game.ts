@@ -3,7 +3,8 @@ import { GameState, CollisionLayer, PLAYER_BASE_HP, PLAYER_BASE_SPEED, PLAYER_MA
 import { PlayerStats, CharacterDef } from '../types';
 import { InputManager } from './InputManager';
 import { NetworkManager, FullSnapshot, EntitySnapshot, PlayerNetState, DamageEvent } from './NetworkManager';
-import { setupScene } from './SceneSetup';
+import { setupScene, getMapModelPaths } from './SceneSetup';
+import { preloadModels } from './AssetLoader';
 import { createPlayer } from '../entities/PlayerFactory';
 import { createRemotePlayerVisual } from '../entities/RemotePlayerFactory';
 import { CollisionSystem } from '../systems/CollisionSystem';
@@ -132,7 +133,14 @@ export class Game {
         this.uiManager = new UIManager(this);
     }
 
-    init(): void {
+    async init(): Promise<void> {
+        // Preload map models
+        try {
+            await preloadModels(this.app, getMapModelPaths());
+        } catch (e) {
+            console.warn('Map models non charges, fallback:', e);
+        }
+
         const { camera, light } = setupScene(this.app);
         this.cameraEntity = camera;
         this.lightEntity = light;

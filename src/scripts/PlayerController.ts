@@ -22,14 +22,38 @@ export class PlayerController extends pc.Script {
 
         if (isMoving) {
             const pos = this.entity.getPosition();
-            const newX = pos.x + this.moveDir.x * this.speed * dt;
-            const newZ = pos.z + this.moveDir.z * this.speed * dt;
+            const dx = this.moveDir.x * this.speed * dt;
+            const dz = this.moveDir.z * this.speed * dt;
+
+            let finalX = pos.x + dx;
+            let finalZ = pos.z + dz;
+
+            // Raycast-based collision with physics
+            const rigidbody = this.app.systems.rigidbody;
+            if (rigidbody) {
+                const radius = 0.5;
+                const origin = new pc.Vec3(pos.x, pos.y + 0.5, pos.z);
+
+                // Check X movement
+                if (dx !== 0) {
+                    const targetX = new pc.Vec3(pos.x + dx + Math.sign(dx) * radius, pos.y + 0.5, pos.z);
+                    const hitX = rigidbody.raycastFirst(origin, targetX);
+                    if (hitX) finalX = pos.x;
+                }
+
+                // Check Z movement
+                if (dz !== 0) {
+                    const targetZ = new pc.Vec3(pos.x, pos.y + 0.5, pos.z + dz + Math.sign(dz) * radius);
+                    const hitZ = rigidbody.raycastFirst(origin, targetZ);
+                    if (hitZ) finalZ = pos.z;
+                }
+            }
 
             // Clamp to arena bounds
-            const clampedX = Math.max(-ARENA_HALF + 1, Math.min(ARENA_HALF - 1, newX));
-            const clampedZ = Math.max(-ARENA_HALF + 1, Math.min(ARENA_HALF - 1, newZ));
+            finalX = Math.max(-ARENA_HALF + 1, Math.min(ARENA_HALF - 1, finalX));
+            finalZ = Math.max(-ARENA_HALF + 1, Math.min(ARENA_HALF - 1, finalZ));
 
-            this.entity.setPosition(clampedX, pos.y, clampedZ);
+            this.entity.setPosition(finalX, pos.y, finalZ);
         }
 
         // Face aim direction
