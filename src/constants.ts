@@ -67,4 +67,5 @@ export const COLLISION_PAIRS: [CollisionLayer, CollisionLayer][] = [
     [CollisionLayer.ENEMY, CollisionLayer.PLAYER],
     [CollisionLayer.PICKUP, CollisionLayer.PLAYER],
     [CollisionLayer.ENEMY_PROJECTILE, CollisionLayer.PLAYER],
+    [CollisionLayer.PLAYER, CollisionLayer.PLAYER],
 ];

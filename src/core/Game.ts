@@ -932,10 +932,32 @@ export class Game {
       if (len > 0) {
         const nx = data.moveX / len;
         const nz = data.moveZ / len;
+        const dx = nx * speed * dt;
+        const dz = nz * speed * dt;
+
+        let finalX = pos.x + dx;
+        let finalZ = pos.z + dz;
+
+        // Mirror PlayerController's collision raycast so remote players
+        // are stopped by buildings the same way local prediction is.
+        const rigidbody = this.app.systems.rigidbody;
+        if (rigidbody) {
+          const origin = new pc.Vec3(pos.x, pos.y + 0.5, pos.z);
+          const rayOptions = { filterCollisionMask: pc.BODYMASK_ALL & ~pc.BODYGROUP_USER_1 };
+          if (dx !== 0) {
+            const tX = new pc.Vec3(pos.x + dx + Math.sign(dx) * 0.5, pos.y + 0.5, pos.z);
+            if (rigidbody.raycastFirst(origin, tX, rayOptions)) finalX = pos.x;
+          }
+          if (dz !== 0) {
+            const tZ = new pc.Vec3(pos.x, pos.y + 0.5, pos.z + dz + Math.sign(dz) * 0.5);
+            if (rigidbody.raycastFirst(origin, tZ, rayOptions)) finalZ = pos.z;
+          }
+        }
+
         entity.setPosition(
-          Math.max(-39, Math.min(39, pos.x + nx * speed * dt)),
+          Math.max(-39, Math.min(39, finalX)),
           pos.y,
-          Math.max(-39, Math.min(39, pos.z + nz * speed * dt)),
+          Math.max(-39, Math.min(39, finalZ)),
         );
       }
       this.updateRemoteAnimationState(entity, isMoving);
@@ -1346,6 +1368,12 @@ export class Game {
   ): pc.Entity {
     const entity = createRemotePlayerVisual(this.app, characterId);
     entity.name = `client_player_${playerId}`;
+    entity.tags.add("player");
+    entity.tags.add("remote_player");
+    (entity as any).__playerId = playerId;
+    // Register on the client's collision system so the local player is
+    // pushed back when bumping into other players' bodies.
+    this.collisionSystem.register(entity, 0.4, CollisionLayer.PLAYER);
     return entity;
   }
 
@@ -1758,6 +1786,32 @@ export class Game {
     layerA: CollisionLayer,
     layerB: CollisionLayer,
   ): void {
+    // Player-vs-player body push runs on both host and client so the
+    // collision feels responsive locally; the host is still authoritative
+    // and will broadcast the corrected positions via snapshot.
+    if (
+      layerA === CollisionLayer.PLAYER &&
+      layerB === CollisionLayer.PLAYER &&
+      a !== b
+    ) {
+      const pa = a.getPosition();
+      const pb = b.getPosition();
+      const dx = pa.x - pb.x;
+      const dz = pa.z - pb.z;
+      const distSq = dx * dx + dz * dz;
+      const minDist = 0.8;
+      if (distSq > 0.0001 && distSq < minDist * minDist) {
+        const dist = Math.sqrt(distSq);
+        const overlap = minDist - dist;
+        const nx = dx / dist;
+        const nz = dz / dist;
+        const push = overlap * 0.5;
+        a.setPosition(pa.x + nx * push, pa.y, pa.z + nz * push);
+        b.setPosition(pb.x - nx * push, pb.y, pb.z - nz * push);
+      }
+      return;
+    }
+
     if (this.isClient) return;
 
     // Projectile hits enemy
