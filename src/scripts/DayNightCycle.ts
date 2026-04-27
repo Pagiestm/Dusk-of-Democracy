@@ -71,14 +71,8 @@ export class DayNightCycle extends pc.Script {
     // Rendu des couleurs
     // -------------------------------------------------------
     private applyColors(nf: number): void {
-        // Ciel : jour → crépuscule (orange) → nuit → aube → jour
-        const sky = nf < 0.5
-            ? this.lerpColor(this.SKY_DAY,  this.SKY_DUSK,  nf * 2)
-            : this.lerpColor(this.SKY_DUSK, this.SKY_NIGHT, (nf - 0.5) * 2);
-
-        if (this.cameraEntity?.camera) {
-            this.cameraEntity.camera.clearColor = sky;
-        }
+        // Sky background overlay: assombrit le body progressivement la nuit
+        document.body.style.setProperty('--sky-night', String(nf));
 
         // Lumière ambiante
         this.app.scene.ambientLight = this.lerpColor(this.AMB_DAY, this.AMB_NIGHT, nf);

@@ -3,6 +3,7 @@ import { ENEMIES } from '../data/enemies';
 import { createEnemy } from '../entities/EnemyFactory';
 import { ENEMY_SPAWN_DISTANCE, ARENA_HALF, NIGHT_SPAWN_MULTIPLIER } from '../constants';
 import { EnemyDef } from '../types';
+import { AimSettings } from '../core/AimSettings';
 
 /** Duration in seconds for wave N (starts 25 s, +5 s/wave, capped at 180 s) */
 function waveDuration(wave: number): number {
@@ -103,8 +104,12 @@ export class WaveSystem {
     }
 
     private fillSpawnQueue(wave: number): void {
-        const total  = waveEnemyCount(wave);
+        const baseTotal = waveEnemyCount(wave);
         const roster = waveRoster(wave);
+
+        // Auto-aim: spawn 30% more enemies as compensation for easier targeting
+        const enemyMultiplier = AimSettings.isAutoAimEnabled() ? 1.3 : 1.0;
+        const total = Math.round(baseTotal * enemyMultiplier);
 
         this.spawnQueue = [];
         for (let i = 0; i < total; i++) {

@@ -1,7 +1,9 @@
+import { AimSettings } from '../../core/AimSettings';
 import type { Game } from '../../core/Game';
 
 export class HUDScreen {
     readonly el: HTMLElement;
+    private autoAimBadge: HTMLElement | null = null;
 
     private hpBar:          HTMLElement | null = null;
     private hpLabel:        HTMLElement | null = null;
@@ -99,6 +101,11 @@ export class HUDScreen {
         right.appendChild(this.goldDisplay);
         right.appendChild(this.dayNightDisplay);
 
+        this.autoAimBadge = document.createElement('div');
+        this.autoAimBadge.className = 'autoaim-badge';
+        this.autoAimBadge.innerHTML = `<span class="autoaim-icon">🎯</span> AUTO <span class="autoaim-malus">-15% DGT · +30% ENN</span>`;
+        right.appendChild(this.autoAimBadge);
+
         // Spectator overlay
         this.spectatorOverlay = document.createElement('div');
         this.spectatorOverlay.className = 'spectator-overlay hidden';
@@ -161,6 +168,9 @@ export class HUDScreen {
         }
         if (this.goldDisplay) {
             this.goldDisplay.textContent = `Or: ${game.getGold()}`;
+        }
+        if (this.autoAimBadge) {
+            this.autoAimBadge.style.display = AimSettings.isAutoAimEnabled() ? '' : 'none';
         }
         if (this.dayNightDisplay) {
             const nf: number = (game.app as any).__nightFactor ?? 0;
