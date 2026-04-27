@@ -229,13 +229,9 @@ export class Game {
       const ai = entity.script?.get("enemyAI");
       if (ai instanceof EnemyAI) ai.enabled = false;
 
+      // Death animation already triggered in Health.die() with a guard.
+      // Just delay the entity destruction so the animation can finish playing.
       const hasAnims = (entity as any).__hasAnims;
-      if (hasAnims) {
-        const modelEntity = (entity as any).__modelEntity as pc.Entity;
-        if (modelEntity && modelEntity.anim) {
-          modelEntity.anim.baseLayer?.transition("die", 0.1);
-        }
-      }
 
       setTimeout(
         () => {
