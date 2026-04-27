@@ -1,4 +1,5 @@
 import { GameState } from '../../constants';
+import { CameraSettings, CameraMode } from '../../core/CameraSettings';
 import type { Game } from '../../core/Game';
 
 export class PauseScreen {
@@ -7,6 +8,7 @@ export class PauseScreen {
     private sfxSlider!: HTMLInputElement;
     private musicLabel!: HTMLSpanElement;
     private sfxLabel!: HTMLSpanElement;
+    private cameraButtons: Map<CameraMode, HTMLButtonElement> = new Map();
 
     constructor(private game: Game, root: HTMLElement) {
         this.el = document.createElement('div');
@@ -45,6 +47,37 @@ export class PauseScreen {
 
         this.el.appendChild(mixer);
 
+        // Camera mode toggle
+        const camSection = document.createElement('div');
+        camSection.className = 'camera-mode-section';
+
+        const camLabel = document.createElement('div');
+        camLabel.className = 'camera-mode-label';
+        camLabel.textContent = '📷 Caméra';
+        camSection.appendChild(camLabel);
+
+        const camBtns = document.createElement('div');
+        camBtns.className = 'camera-mode-buttons';
+
+        const modes: { mode: CameraMode; label: string }[] = [
+            { mode: 'thirdperson', label: 'Troisième personne' },
+            { mode: 'topdown',     label: 'Vue de dessus' },
+        ];
+        for (const { mode, label } of modes) {
+            const btn = document.createElement('button');
+            btn.className = 'camera-mode-btn';
+            btn.textContent = label;
+            btn.onclick = () => {
+                CameraSettings.setMode(mode);
+                this.refreshCameraButtons();
+            };
+            this.cameraButtons.set(mode, btn);
+            camBtns.appendChild(btn);
+        }
+
+        camSection.appendChild(camBtns);
+        this.el.appendChild(camSection);
+
         const resumeBtn = document.createElement('button');
         resumeBtn.className = 'btn';
         resumeBtn.textContent = 'REPRENDRE';
@@ -66,10 +99,18 @@ export class PauseScreen {
         this.musicLabel.textContent = `${Math.round(this.game.audioManager.getMusicVolume() * 100)}%`;
         this.sfxSlider.value = String(this.game.audioManager.getSfxVolume());
         this.sfxLabel.textContent = `${Math.round(this.game.audioManager.getSfxVolume() * 100)}%`;
+        this.refreshCameraButtons();
         this.el.classList.remove('hidden');
     }
 
     hide(): void { this.el.classList.add('hidden'); }
+
+    private refreshCameraButtons(): void {
+        const current = CameraSettings.getMode();
+        for (const [mode, btn] of this.cameraButtons) {
+            btn.classList.toggle('active', mode === current);
+        }
+    }
 
     private createVolumeRow(
         title: string,

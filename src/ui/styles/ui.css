@@ -724,6 +724,56 @@
     margin-bottom: 10px;
 }
 
+.camera-mode-section {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px 28px;
+    min-width: 320px;
+    margin-bottom: 14px;
+}
+
+.camera-mode-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ccc;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.camera-mode-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.camera-mode-btn {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+}
+
+.camera-mode-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.camera-mode-btn.active {
+    color: #f7c948;
+    background: rgba(247, 201, 72, 0.1);
+    border-color: rgba(247, 201, 72, 0.5);
+    box-shadow: 0 0 12px rgba(247, 201, 72, 0.15);
+}
+
 .volume-row {
     display: flex;
     align-items: center;
