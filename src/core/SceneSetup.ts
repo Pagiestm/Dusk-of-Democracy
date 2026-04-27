@@ -2,6 +2,7 @@ import * as pc from 'playcanvas';
 import { CAMERA_HEIGHT, CAMERA_ANGLE } from '../constants';
 import { getCachedModel } from './AssetLoader';
 import { COLLISION_DATA } from '../data/collisionData';
+import { LIGHT_DATA } from '../data/lightData';
 
 const ARENA_PATH = 'assets/models/map/arena.glb';
 const MAP_BASE_PATH = 'assets/models/map/';
@@ -30,6 +31,9 @@ export function setupScene(app: pc.Application): { camera: pc.Entity; light: pc.
 
         // Add physics colliders from editor data
         addPhysicsColliders(app);
+
+        // Add streetlamp lights from editor data
+        addStreetLights(app);
 
         console.log('Map chargee avec succes');
     } else {
@@ -146,6 +150,34 @@ function addPhysicsColliders(app: pc.Application): void {
     }
 
     console.log(`Physics: ${count}/${COLLISION_DATA.length} box colliders ajoutes`);
+}
+
+function addStreetLights(app: pc.Application): void {
+    const lightsRoot = new pc.Entity('street-lights');
+    app.root.addChild(lightsRoot);
+
+    for (let i = 0; i < LIGHT_DATA.length; i++) {
+        const entry = LIGHT_DATA[i];
+        const light = new pc.Entity(`street-light-${i}`);
+        light.tags.add('street-light');
+
+        light.addComponent('light', {
+            type: entry.type,
+            color: new pc.Color(entry.color[0], entry.color[1], entry.color[2]),
+            intensity: entry.intensity,
+            range: entry.range * MAP_SCALE,
+            innerConeAngle: entry.innerConeAngle,
+            outerConeAngle: entry.outerConeAngle,
+            castShadows: false,
+        });
+
+        light.setPosition(entry.pos[0] * MAP_SCALE, entry.pos[1] * MAP_SCALE, entry.pos[2] * MAP_SCALE);
+        light.setEulerAngles(entry.rotation[0], entry.rotation[1], entry.rotation[2]);
+        light.enabled = false; // off by default, DayNightCycle will enable at night
+        lightsRoot.addChild(light);
+    }
+
+    console.log(`Lights: ${LIGHT_DATA.length} street lights ajoutees`);
 }
 
 function buildFallbackGround(app: pc.Application): void {

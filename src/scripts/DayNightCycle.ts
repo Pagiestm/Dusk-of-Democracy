@@ -31,9 +31,12 @@ export class DayNightCycle extends pc.Script {
     private readonly SUN_NIGHT = new pc.Color(0.25, 0.28, 0.55);
 
     private cameraEntity: pc.Entity | null = null;
+    private streetLights: pc.Entity[] = [];
+    private lastStreetLightsOn: boolean | null = null;
 
     initialize(): void {
         this.cameraEntity = this.app.root.findByName('camera') as pc.Entity | null;
+        this.streetLights = this.app.root.findByTag('street-light') as pc.Entity[];
         // Appliquer les couleurs de jour dès le départ
         this.applyColors(0);
     }
@@ -94,6 +97,15 @@ export class DayNightCycle extends pc.Script {
         const playerGlow = this.app.root.findByName('player_glow') as pc.Entity | null;
         if (playerGlow?.light) {
             playerGlow.light.intensity = pc.math.lerp(0, 1.8, nf);
+        }
+
+        // Lampadaires : on/off uniquement la nuit
+        const lightsOn = nf > 0.4;
+        if (lightsOn !== this.lastStreetLightsOn) {
+            for (const sl of this.streetLights) {
+                sl.enabled = lightsOn;
+            }
+            this.lastStreetLightsOn = lightsOn;
         }
     }
 

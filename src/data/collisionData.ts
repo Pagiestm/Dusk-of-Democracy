@@ -1,4 +1,3 @@
-// Auto-generated collision data from PlayCanvas editor scene
 export interface CollisionEntry {
     glb: string;
     p: [number, number, number];
