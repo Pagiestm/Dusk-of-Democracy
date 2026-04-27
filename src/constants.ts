@@ -40,6 +40,7 @@ export enum CollisionLayer {
     ENEMY = 1,
     PLAYER_PROJECTILE = 2,
     PICKUP = 3,
+    ENEMY_PROJECTILE = 4,
 }
 
 // === Game States ===
@@ -65,4 +66,5 @@ export const COLLISION_PAIRS: [CollisionLayer, CollisionLayer][] = [
     [CollisionLayer.PLAYER_PROJECTILE, CollisionLayer.ENEMY],
     [CollisionLayer.ENEMY, CollisionLayer.PLAYER],
     [CollisionLayer.PICKUP, CollisionLayer.PLAYER],
+    [CollisionLayer.ENEMY_PROJECTILE, CollisionLayer.PLAYER],
 ];

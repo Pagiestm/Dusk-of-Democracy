@@ -64,6 +64,15 @@ export interface EnemyDef {
   animRunPath?: string;
   animAttackPath?: string;
   animDiePath?: string;
+  // Ranged behavior — when set, the enemy fires projectiles at the player
+  // and tries to keep its distance instead of meleeing.
+  ranged?: {
+    range: number;            // start firing within this distance
+    cooldown: number;         // seconds between shots
+    projectileSpeed: number;
+    projectileLifetime: number;
+    projectileDamage: number;
+  };
 }
 
 // === Upgrades ===

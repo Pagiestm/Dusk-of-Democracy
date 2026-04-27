@@ -4,13 +4,24 @@ import {
   NIGHT_SPEED_MULTIPLIER,
   GameState,
 } from "../constants";
+import { createProjectile } from "../entities/ProjectileFactory";
+
+export interface RangedConfig {
+  range: number;
+  cooldown: number;
+  projectileSpeed: number;
+  projectileLifetime: number;
+  projectileDamage: number;
+}
 
 export class EnemyAI extends pc.Script {
   static scriptName = "enemyAI";
 
   speed: number = 3;
   contactDamage: number = 10;
+  ranged: RangedConfig | null = null;
   private contactTimer: number = 0;
+  private shootTimer: number = 0;
   private dir: pc.Vec3 = new pc.Vec3();
 
   update(dt: number): void {
@@ -52,6 +63,34 @@ export class EnemyAI extends pc.Script {
     this.dir.sub2(playerPos, myPos);
     this.dir.y = 0;
     const dist = this.dir.length();
+
+    // Ranged attack: when in range, stop and shoot instead of charging
+    if (this.ranged) {
+      if (this.shootTimer > 0) this.shootTimer -= dt;
+      const inRange = dist <= this.ranged.range;
+
+      if (inRange && this.shootTimer <= 0) {
+        this.dir.normalize();
+        const origin = new pc.Vec3(myPos.x, 0.6, myPos.z);
+        createProjectile(
+          this.app as pc.Application,
+          origin,
+          this.dir.clone(),
+          this.ranged.projectileSpeed,
+          this.ranged.projectileLifetime,
+          this.ranged.projectileDamage,
+          undefined,
+          true, // isEnemy
+        );
+        this.shootTimer = this.ranged.cooldown;
+      }
+
+      // Keep some distance: stop moving once in range
+      if (inRange && dist > 0.5) {
+        if (dist > 0.1) this.entity.lookAt(playerPos.x, myPos.y, playerPos.z);
+        return;
+      }
+    }
 
     if (dist > 0.5) {
       this.dir.normalize();

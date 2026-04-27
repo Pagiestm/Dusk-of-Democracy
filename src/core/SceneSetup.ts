@@ -14,6 +14,7 @@ export function getMapModelPaths(): string[] {
     for (const c of COLLISION_DATA) {
         paths.add(MAP_BASE_PATH + c.glb);
     }
+    paths.add('assets/bullet/bullet.glb');
     return Array.from(paths);
 }
 

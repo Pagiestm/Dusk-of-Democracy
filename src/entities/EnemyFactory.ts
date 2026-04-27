@@ -170,6 +170,7 @@ export function createEnemy(
   const ai = entity.script!.create(EnemyAI) as unknown as EnemyAI;
   ai.speed = def.speed;
   ai.contactDamage = def.damage;
+  if (def.ranged) ai.ranged = { ...def.ranged };
 
   const health = entity.script!.create(Health) as unknown as Health;
   health.maxHp = def.hp;

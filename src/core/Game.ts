@@ -1594,6 +1594,17 @@ export class Game {
         );
       }
     }
+    for (const proj of this.app.root.findByTag(
+      "enemy_projectile",
+    ) as pc.Entity[]) {
+      if ((proj as any).__collisionId === undefined) {
+        this.collisionSystem.register(
+          proj,
+          0.15,
+          CollisionLayer.ENEMY_PROJECTILE,
+        );
+      }
+    }
     for (const pickup of this.app.root.findByTag("xp_pickup") as pc.Entity[]) {
       if ((pickup as any).__collisionId === undefined) {
         this.collisionSystem.register(pickup, 0.3, CollisionLayer.PICKUP);
@@ -1697,6 +1708,40 @@ export class Game {
         }
         a.destroy();
       }
+    }
+
+    // Enemy projectile hits the local player
+    if (
+      layerA === CollisionLayer.ENEMY_PROJECTILE &&
+      layerB === CollisionLayer.PLAYER
+    ) {
+      const projScript = a.script?.get("projectile") as any;
+      if (!projScript) return;
+      let damage = projScript.damage as number;
+
+      if (b === this.playerEntity) {
+        let armorHit = false;
+        if (this.playerStats.armor > 0) {
+          armorHit = true;
+          if (this.playerStats.armor >= damage) {
+            this.playerStats.armor -= damage;
+            this.app.fire("damage:dealt", b, damage, true);
+            this.collisionSystem.unregister(a);
+            a.destroy();
+            return;
+          }
+          damage -= this.playerStats.armor;
+          this.playerStats.armor = 0;
+        }
+        const playerHealth = b.script?.get("health") as Health | undefined;
+        if (playerHealth) {
+          playerHealth.takeDamage(damage, armorHit);
+          this.playerStats.hp = playerHealth.hp;
+        }
+      }
+
+      this.collisionSystem.unregister(a);
+      a.destroy();
     }
   }
 

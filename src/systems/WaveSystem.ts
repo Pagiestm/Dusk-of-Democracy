@@ -25,15 +25,17 @@ function waveEnemyCount(wave: number): number {
  *   wave 1+ : basic
  *   wave 2+ : fast
  *   wave 3+ : swarm
+ *   wave 4+ : shooter (ranged)
  *   wave 5+ : tank
  */
 function waveRoster(wave: number): { id: string; weight: number }[] {
     const roster: { id: string; weight: number }[] = [
         { id: 'basic', weight: Math.max(1, 6 - Math.floor(wave / 3)) },
     ];
-    if (wave >= 2) roster.push({ id: 'fast',  weight: 2 + Math.floor(wave / 4) });
-    if (wave >= 3) roster.push({ id: 'swarm', weight: 3 + Math.floor(wave / 3) });
-    if (wave >= 5) roster.push({ id: 'tank',  weight: 1 + Math.floor(wave / 6) });
+    if (wave >= 2) roster.push({ id: 'fast',    weight: 2 + Math.floor(wave / 4) });
+    if (wave >= 3) roster.push({ id: 'swarm',   weight: 3 + Math.floor(wave / 3) });
+    if (wave >= 4) roster.push({ id: 'shooter', weight: 1 + Math.floor(wave / 5) });
+    if (wave >= 5) roster.push({ id: 'tank',    weight: 1 + Math.floor(wave / 6) });
     return roster;
 }
 
