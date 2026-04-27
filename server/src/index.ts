@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { PORT, CORS_OPTIONS } from './config.js';
-import { initSocketManager } from './socket/SocketManager.js';
+import { initSocketManager } from './socket/socketManager.js';
 
 const httpServer = createServer();
 const io = new Server(httpServer, { cors: CORS_OPTIONS });
