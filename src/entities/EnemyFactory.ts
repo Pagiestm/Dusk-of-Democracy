@@ -15,20 +15,34 @@ function setupEnemyAnimations(
     | undefined;
   if (!anims || anims.length === 0) return;
 
-  let runTrack: pc.AnimTrack | null = null;
-  let attackTrack: pc.AnimTrack | null = null;
-  let dieTrack: pc.AnimTrack | null = null;
+  // Score each track against keywords; higher score = better match.
+  // Prefer tracks whose final segment ends with the keyword (e.g. "Female_Run"
+  // beats "Female_RunningJump" or "Run_Shoot" for the "run" slot).
+  const pickBest = (keywords: string[]): pc.AnimTrack | null => {
+    let best: pc.AnimTrack | null = null;
+    let bestScore = 0;
+    for (const a of anims) {
+      const track = a.resource as pc.AnimTrack;
+      if (!track) continue;
+      const full = track.name.toLowerCase();
+      const last = full.split(/[|_/]/).pop() ?? full;
+      let score = 0;
+      for (const kw of keywords) {
+        if (last === kw) score = Math.max(score, 3);              // exact final segment
+        else if (last.endsWith(kw)) score = Math.max(score, 2);   // ends with keyword
+        else if (full.includes(kw)) score = Math.max(score, 1);   // contains anywhere
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = track;
+      }
+    }
+    return best;
+  };
 
-  for (const a of anims) {
-    const track = a.resource as pc.AnimTrack;
-    if (!track) continue;
-    const name = track.name.toLowerCase();
-
-    if (name.includes("run")) runTrack = track;
-    else if (name.includes("punch") || name.includes("attack"))
-      attackTrack = track;
-    else if (name.includes("death") || name.includes("die")) dieTrack = track;
-  }
+  let runTrack = pickBest(["run"]);
+  let attackTrack = pickBest(["punch", "attack"]);
+  let dieTrack = pickBest(["death", "die"]);
 
   if (!runTrack && anims.length > 0)
     runTrack = anims[0].resource as pc.AnimTrack;
