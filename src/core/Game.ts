@@ -783,7 +783,7 @@ export class Game {
 
   /** Smoothly interpolate all client-side entities toward their target positions */
   private interpolateClientEntities(dt: number): void {
-    const lerpSpeed = 18; // Higher = snappier
+    const lerpSpeed = 24; // Higher = snappier
     const t = Math.min(1, lerpSpeed * dt);
 
     // Interpolate other players
@@ -793,11 +793,19 @@ export class Game {
       const tz = (entity as any).__targetZ;
       const ta = (entity as any).__targetAngle;
       if (tx === undefined) continue;
+
+      const snapshotTime = (entity as any).__snapshotTime ?? this.gameTime;
+      const extrapolation = Math.min(Math.max(this.gameTime - snapshotTime, 0), 0.12);
+      const vx = (entity as any).__velX ?? 0;
+      const vz = (entity as any).__velZ ?? 0;
+      const predictedX = tx + vx * extrapolation;
+      const predictedZ = tz + vz * extrapolation;
+
       const pos = entity.getPosition();
       entity.setPosition(
-        pos.x + (tx - pos.x) * t,
+        pos.x + (predictedX - pos.x) * t,
         0.5,
-        pos.z + (tz - pos.z) * t,
+        pos.z + (predictedZ - pos.z) * t,
       );
       if (ta !== undefined) {
         const cur = entity.getEulerAngles();
@@ -1116,10 +1124,18 @@ export class Game {
       entity.enabled = pState.alive;
 
       if (pState.alive) {
+        const prevX = (entity as any).__targetX;
+        const prevZ = (entity as any).__targetZ;
+        const prevSnapshotTime = (entity as any).__snapshotTime ?? snap.gameTime;
+        const snapshotDt = Math.max(snap.gameTime - prevSnapshotTime, 0.001);
+
         // Store targets for interpolation
         (entity as any).__targetX = pState.x;
         (entity as any).__targetZ = pState.z;
         (entity as any).__targetAngle = pState.angle;
+        (entity as any).__snapshotTime = snap.gameTime;
+        (entity as any).__velX = (pState.x - (prevX ?? pState.x)) / snapshotDt;
+        (entity as any).__velZ = (pState.z - (prevZ ?? pState.z)) / snapshotDt;
         // Snap if first frame (no previous position set)
         if ((entity as any).__interpReady === undefined) {
           entity.setPosition(pState.x, 0.5, pState.z);
