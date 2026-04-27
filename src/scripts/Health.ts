@@ -88,14 +88,35 @@ export class Health extends pc.Script {
   }
 
   private die(): void {
-    // Play death animation if available (Trump custom model)
+    // Play death animation if available (custom model)
     const modelEntity = (this.entity as any).__modelEntity as
       | pc.Entity
       | undefined;
     if (modelEntity && (this.entity as any).__hasAnims) {
       if (!(this.entity as any).__deadAnimPlayed) {
-        modelEntity.anim?.baseLayer?.transition("die", 0.1);
         (this.entity as any).__deadAnimPlayed = true;
+        const anim = modelEntity.anim;
+        if (anim) {
+          anim.baseLayer?.transition("die", 0.1);
+
+          // The AnimStateGraph's loop:false isn't respected by PlayCanvas's
+          // anim component (animation keeps looping). Manually freeze the anim
+          // speed once the death animation has played through once.
+          const watcher = setInterval(() => {
+            if (!this.entity || !this.entity.parent) {
+              clearInterval(watcher);
+              return;
+            }
+            const layer = (anim as any).baseLayer;
+            const progress = layer?.activeStateProgress ?? 0;
+            if (layer?.activeState === 'die' && progress >= 0.95) {
+              (anim as any).speed = 0;
+              if (layer) layer.speed = 0;
+              clearInterval(watcher);
+            }
+          }, 30);
+          setTimeout(() => clearInterval(watcher), 5000);
+        }
       }
     }
 
