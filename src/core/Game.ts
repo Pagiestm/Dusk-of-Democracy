@@ -38,8 +38,9 @@ import { XPPickup } from "../scripts/XPPickup";
 import { UIManager } from "../ui/UIManager";
 import { AudioManager } from "./AudioManager";
 
-const PLAYER_SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz for responsive remote players
-const WORLD_SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz to keep enemy behavior close to solo feel
+const PLAYER_SNAPSHOT_INTERVAL = 1 / 25; // 25 Hz for responsive remote players
+const WORLD_SNAPSHOT_INTERVAL = 1 / 15; // 15 Hz — interpolation smooths the rest, big bandwidth saving
+const CLIENT_INPUT_INTERVAL = 1 / 20;   // 20 Hz — was every frame, which flooded the server
 
 let nextNetId = 1;
 function allocNetId(): number {
@@ -61,6 +62,7 @@ export class Game {
   isMultiplayerGame: boolean = false;
   private playerSnapshotTimer: number = 0;
   private worldSnapshotTimer: number = 0;
+  private clientInputTimer: number = 0;
   private hostDead: boolean = false;
 
   // Host: remote players (keyed by socket.id)
@@ -738,14 +740,19 @@ export class Game {
         this.updateClientPrediction(dt);
         this.interpolateClientEntities(dt);
 
-        const input = this.inputManager.getState();
-        this.network.sendInput({
-          moveX: input.moveDirection.x,
-          moveZ: input.moveDirection.y,
-          aimX: input.aimDirection.x,
-          aimZ: input.aimDirection.y,
-          fire: false,
-        });
+        // Throttle input sending so we don't flood the server every frame
+        this.clientInputTimer += dt;
+        if (this.clientInputTimer >= CLIENT_INPUT_INTERVAL) {
+          this.clientInputTimer = 0;
+          const input = this.inputManager.getState();
+          this.network.sendInput({
+            moveX: input.moveDirection.x,
+            moveZ: input.moveDirection.y,
+            aimX: input.aimDirection.x,
+            aimZ: input.aimDirection.y,
+            fire: false,
+          });
+        }
         this.uiManager.updateHUD();
       }
     } else if (
