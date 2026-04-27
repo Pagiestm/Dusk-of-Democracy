@@ -57,16 +57,6 @@ export const ENEMIES: EnemyDef[] = [
     animDiePath: "assets/woman/Woman.glb",
   },
   {
-    id: "swarm",
-    name: "Bot Twitter",
-    hp: 5,
-    speed: 5,
-    damage: 3,
-    xpReward: 5,
-    color: new pc.Color(0.3, 0.7, 0.9),
-    scale: 0.5,
-  },
-  {
     id: "shooter",
     name: "Scientifique",
     hp: 25,
