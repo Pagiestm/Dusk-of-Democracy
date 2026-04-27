@@ -50,14 +50,21 @@ export const WEAPONS: WeaponDef[] = [
         spreadAngle: 40,
     },
     {
-        id: 'sanctions',
-        name: 'Sanctions',
-        description: 'Cadence de tir extrêmement rapide mais faibles dégâts individuels. La quantité fait la qualité.',
-        damage: 4,
+        id: 'insults',
+        name: 'Injures',
+        description: 'Hurle des insultes en rafale. Cadence ultra-rapide, faibles dégâts individuels.',
+        damage: 6,
         cooldown: 0.12,
         pattern: 'single',
-        projectileSpeed: 25,
-        projectileLifetime: 1.2,
+        projectileSpeed: 14,
+        projectileLifetime: 1.6,
+        projectileTexts: [
+            'fils de pute',
+            'gauchiasse',
+            'droitardé',
+            'islamogauchiste',
+            'salope',
+        ],
     },
 ];
 

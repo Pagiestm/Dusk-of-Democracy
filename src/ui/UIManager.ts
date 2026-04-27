@@ -95,6 +95,50 @@ export class UIManager {
     updateHUD(): void {
         this.hud.update();
         this.updateNametags();
+        this.updateProjectileTexts();
+    }
+
+    // ─── Text Projectiles (insults) ────────────────────────────────────
+    private projectileTextEls: Map<pc.Entity, HTMLElement> = new Map();
+
+    private updateProjectileTexts(): void {
+        const cameraNode = this.game.app.root.findByName('camera') as pc.Entity | null;
+        if (!cameraNode?.camera) return;
+
+        const projectiles = this.game.app.root.findByTag('player_projectile') as pc.Entity[];
+        const seen = new Set<pc.Entity>();
+
+        for (const p of projectiles) {
+            const text = (p as any).__projectileText as string | undefined;
+            if (!text) continue;
+            seen.add(p);
+
+            const wp = p.getPosition();
+            const sp = cameraNode.camera.worldToScreen(new pc.Vec3(wp.x, wp.y + 0.5, wp.z));
+
+            let el = this.projectileTextEls.get(p);
+            if (sp.z < 0) {
+                if (el) el.style.display = 'none';
+                continue;
+            }
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'insult-projectile';
+                el.textContent = text;
+                this.root.appendChild(el);
+                this.projectileTextEls.set(p, el);
+            }
+            el.style.display = '';
+            el.style.left = `${sp.x}px`;
+            el.style.top = `${sp.y}px`;
+        }
+
+        for (const [p, el] of this.projectileTextEls) {
+            if (!seen.has(p)) {
+                el.remove();
+                this.projectileTextEls.delete(p);
+            }
+        }
     }
 
     /** Show the level-up overlay without changing game state (multiplayer) */
@@ -188,6 +232,9 @@ export class UIManager {
         this.waveEnd.hide();
         this.gameOver.hide();
         this.highScores.hide();
+        // Clean projectile text overlays
+        for (const el of this.projectileTextEls.values()) el.remove();
+        this.projectileTextEls.clear();
         // Clean nametags
         for (const el of this.nametagEls.values()) el.remove();
         this.nametagEls.clear();

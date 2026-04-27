@@ -48,6 +48,8 @@ export interface WeaponDef {
   projectileModelPath?: string;
   /** Optional uniform scale applied to the projectile model. */
   projectileModelScale?: number;
+  /** Optional list of strings — projectile renders as floating text picked at random. */
+  projectileTexts?: string[];
 }
 
 // === Enemies ===

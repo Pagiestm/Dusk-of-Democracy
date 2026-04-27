@@ -243,6 +243,12 @@ export class CombatSystem {
         }
     }
 
+    private pickRandomText(def: WeaponDef): string | undefined {
+        const texts = def.projectileTexts;
+        if (!texts || texts.length === 0) return undefined;
+        return texts[Math.floor(Math.random() * texts.length)];
+    }
+
     private fireSingle(pos: pc.Vec3, aimX: number, aimZ: number, def: WeaponDef, damage: number, extraProjectiles: number): void {
         const totalProjectiles = 1 + extraProjectiles;
         const spreadPerExtra = 5;
@@ -254,7 +260,7 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale, this.pickRandomText(def));
             this.tagProjectile(proj);
         }
     }
@@ -272,7 +278,7 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale, this.pickRandomText(def));
             this.tagProjectile(proj);
         }
     }

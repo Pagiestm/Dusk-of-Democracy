@@ -17,7 +17,8 @@ export function createProjectile(
     color?: pc.Color,
     isEnemy: boolean = false,
     modelPath?: string,
-    modelScale?: number
+    modelScale?: number,
+    text?: string
 ): pc.Entity {
     const entity = new pc.Entity(`projectile_${projectileCounter++}`);
 
@@ -25,7 +26,10 @@ export function createProjectile(
     const customAsset = modelPath ? getCachedModel(modelPath) : undefined;
     const bulletAsset = !customAsset && isEnemy ? getCachedModel(BULLET_MODEL_PATH) : undefined;
 
-    if (customAsset) {
+    if (text) {
+        // Text projectile: no 3D visual, just metadata for the UI to render.
+        (entity as any).__projectileText = text;
+    } else if (customAsset) {
         const container = customAsset.resource as any;
         const model = container.instantiateRenderEntity() as pc.Entity;
         const s = modelScale ?? 1;

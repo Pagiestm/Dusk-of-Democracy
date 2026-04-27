@@ -843,6 +843,28 @@
     background: #f7c948;
 }
 
+/* === Insult projectiles (text overlays following 3D positions) === */
+.insult-projectile {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 1px;
+    color: #ff3030;
+    text-transform: uppercase;
+    text-shadow:
+        2px 2px 0 #000,
+        -2px 2px 0 #000,
+        2px -2px 0 #000,
+        -2px -2px 0 #000,
+        0 0 8px rgba(255, 0, 0, 0.6);
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    z-index: 5;
+}
+
 .volume-row {
     display: flex;
     align-items: center;
