@@ -10,6 +10,8 @@ export const WEAPONS: WeaponDef[] = [
         pattern: 'single',
         projectileSpeed: 22,
         projectileLifetime: 2.0,
+        projectileModelPath: 'assets/book/book.glb',
+        projectileModelScale: 0.3,
     },
     {
         id: 'tweet_storm',
