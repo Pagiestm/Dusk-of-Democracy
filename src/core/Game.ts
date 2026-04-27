@@ -370,6 +370,14 @@ export class Game {
       this.triggerGameOverSequence(false);
     };
 
+    // Pause / resume coming from another player
+    this.network.onRemotePause = () => {
+      this.pauseGame(false);
+    };
+    this.network.onRemoteResume = () => {
+      this.resumeGame(false);
+    };
+
     // Host: remote player buys a shop item
     this.network.onRemoteBuyItem = (data) => {
       if (!this.isHost) return;
@@ -663,12 +671,20 @@ export class Game {
     }
   }
 
-  pauseGame(): void {
-    if (this.state === GameState.PLAYING) this.setState(GameState.PAUSED);
+  pauseGame(broadcast: boolean = true): void {
+    if (this.state !== GameState.PLAYING) return;
+    this.setState(GameState.PAUSED);
+    if (broadcast && this.isMultiplayerGame) {
+      this.network.sendPause();
+    }
   }
 
-  resumeGame(): void {
-    if (this.state === GameState.PAUSED) this.setState(GameState.PLAYING);
+  resumeGame(broadcast: boolean = true): void {
+    if (this.state !== GameState.PAUSED) return;
+    this.setState(GameState.PLAYING);
+    if (broadcast && this.isMultiplayerGame) {
+      this.network.sendResume();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -680,7 +696,7 @@ export class Game {
       this.gameTime += dt;
       this.inputManager.update(this.playerEntity, this.cameraEntity);
 
-      if (this.inputManager.getState().pause && !this.isMultiplayerGame) {
+      if (this.inputManager.getState().pause) {
         this.pauseGame();
         return;
       }

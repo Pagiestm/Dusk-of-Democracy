@@ -94,6 +94,8 @@ export class NetworkManager {
     onRemoteInput: ((data: { playerId: string; moveX: number; moveZ: number; aimX: number; aimZ: number; fire: boolean }) => void) | null = null;
     onError: ((msg: string) => void) | null = null;
     onGameOver: (() => void) | null = null;
+    onRemotePause: (() => void) | null = null;
+    onRemoteResume: (() => void) | null = null;
     onRemoteBuyItem: ((data: { playerId: string; itemId: string }) => void) | null = null;
     onRemotePlayerReady: ((data: { playerId: string }) => void) | null = null;
     onRemoteSelectUpgrade: ((data: { playerId: string; upgradeId: string }) => void) | null = null;
@@ -200,6 +202,14 @@ export class NetworkManager {
             this.onGameOver?.();
         });
 
+        this.socket.on('game:pause', () => {
+            this.onRemotePause?.();
+        });
+
+        this.socket.on('game:resume', () => {
+            this.onRemoteResume?.();
+        });
+
         // Host receives buy/ready from remote players
         this.socket.on('game:remoteBuyItem', (data) => {
             this.onRemoteBuyItem?.(data);
@@ -270,6 +280,14 @@ export class NetworkManager {
 
     sendGameOver(): void {
         this.socket?.emit('game:over');
+    }
+
+    sendPause(): void {
+        this.socket?.emit('game:pause');
+    }
+
+    sendResume(): void {
+        this.socket?.emit('game:resume');
     }
 
     sendSelectUpgrade(upgradeId: string): void {

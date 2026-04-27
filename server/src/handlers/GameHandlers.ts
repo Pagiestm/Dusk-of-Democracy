@@ -91,4 +91,18 @@ export function registerGameHandlers(io: Server, socket: Socket, roomManager: Ro
         roomManager.finishGame(room);
         socket.to(room.id).emit('game:over');
     });
+
+    // ── Pause / resume relay (any player → everyone in the room) ──
+
+    socket.on('game:pause', () => {
+        const room = roomManager.getRoomBySocket(socket);
+        if (!room || room.status !== 'playing') return;
+        socket.to(room.id).emit('game:pause', { playerId: socket.id });
+    });
+
+    socket.on('game:resume', () => {
+        const room = roomManager.getRoomBySocket(socket);
+        if (!room || room.status !== 'playing') return;
+        socket.to(room.id).emit('game:resume', { playerId: socket.id });
+    });
 }
