@@ -6,13 +6,43 @@
     <title>Dusk of Democracy</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; background: #000; }
+        body {
+            overflow: hidden;
+            background: #000 url('/sky.jpg') center / cover no-repeat fixed;
+            --sky-night: 0;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 78% 22%, rgba(245, 240, 220, 0.95) 0 38px, rgba(245, 240, 220, 0.25) 39px 60px, transparent 80px),
+                radial-gradient(2px 2px at 12% 18%, #ffffff, transparent),
+                radial-gradient(1px 1px at 25% 9%, #ffffff, transparent),
+                radial-gradient(1.5px 1.5px at 38% 22%, #ffffff, transparent),
+                radial-gradient(1px 1px at 55% 12%, #d8e4ff, transparent),
+                radial-gradient(2px 2px at 65% 30%, #ffffff, transparent),
+                radial-gradient(1px 1px at 88% 8%, #d8e4ff, transparent),
+                radial-gradient(1.5px 1.5px at 92% 35%, #ffffff, transparent),
+                radial-gradient(1px 1px at 8% 40%, #ffffff, transparent),
+                radial-gradient(1px 1px at 42% 45%, #d8e4ff, transparent),
+                radial-gradient(2px 2px at 18% 28%, #ffffff, transparent),
+                radial-gradient(1px 1px at 70% 18%, #ffffff, transparent),
+                radial-gradient(1.5px 1.5px at 50% 38%, #ffffff, transparent),
+                rgba(2, 4, 12, 1);
+            opacity: var(--sky-night, 0);
+            pointer-events: none;
+            z-index: 0;
+            transition: opacity 0.5s linear;
+        }
         #game-canvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            background: transparent;
+            z-index: 1;
         }
         #ui-root {
             position: absolute;

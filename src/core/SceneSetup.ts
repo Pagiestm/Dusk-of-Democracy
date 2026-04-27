@@ -44,7 +44,7 @@ export function setupScene(app: pc.Application): { camera: pc.Entity; light: pc.
     // === Camera ===
     const camera = new pc.Entity('camera');
     camera.addComponent('camera', {
-        clearColor: new pc.Color(0.35, 0.58, 0.88),
+        clearColor: new pc.Color(0, 0, 0, 0),
         farClip: 500,
         fov: 45,
     });

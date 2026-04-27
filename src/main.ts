@@ -41,7 +41,7 @@ async function startGame() {
         keyboard: new pc.Keyboard(window),
         graphicsDeviceOptions: {
             antialias: true,
-            alpha: false,
+            alpha: true,
             preserveDrawingBuffer: false,
         },
     });
