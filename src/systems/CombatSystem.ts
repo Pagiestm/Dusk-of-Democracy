@@ -278,25 +278,62 @@ export class CombatSystem {
     }
 
     private fireArea(pos: pc.Vec3, def: WeaponDef, damage: number): void {
-        const area = new pc.Entity('area_effect');
-        area.addComponent('render', { type: 'cylinder' });
-
         const radius = def.areaRadius || 4;
-        area.setLocalScale(radius * 2, 0.2, radius * 2);
+        const area = new pc.Entity('area_effect');
         area.setPosition(pos.x, 0.1, pos.z);
-
-        const mat = new pc.StandardMaterial();
-        mat.diffuse = new pc.Color(1, 0.5, 0.2);
-        mat.emissive = new pc.Color(1, 0.3, 0.1);
-        mat.emissiveIntensity = 3;
-        mat.opacity = 0.5;
-        mat.blendType = pc.BLEND_ADDITIVE;
-        mat.update();
-        for (const mi of area.render!.meshInstances) mi.material = mat;
-
         area.tags.add('area_effect');
         this.app.root.addChild(area);
 
+        // Try to use the animated explosion model
+        const explosionAsset = getCachedModel('assets/explosion/explosion.glb');
+        let visualLifetime = 300;
+
+        if (explosionAsset) {
+            const container = explosionAsset.resource as any;
+            const visual = container.instantiateRenderEntity() as pc.Entity;
+            // The model is centered around (0, 0, -16) and spans ~15 units. Recenter and scale.
+            const modelScale = radius / 60;
+            visual.setLocalScale(modelScale, modelScale, modelScale);
+            visual.setLocalPosition(0, 0, 16 * modelScale); // recenter Z
+            area.addChild(visual);
+
+            // Play the animation if present
+            const anims = (container as any).animations as pc.Asset[] | undefined;
+            if (anims && anims.length > 0) {
+                visual.addComponent('anim', { activate: true, speed: 1 });
+                const track = anims[0].resource as pc.AnimTrack;
+                if (track) {
+                    visual.anim!.loadStateGraph(new pc.AnimStateGraph({
+                        layers: [{
+                            name: 'Base',
+                            states: [
+                                { name: 'START', speed: 1 },
+                                { name: 'play', speed: 1, loop: false },
+                            ],
+                            transitions: [{ from: 'START', to: 'play', time: 0, conditions: [] }],
+                        }],
+                        parameters: {},
+                    }));
+                    visual.anim!.assignAnimation('play', track);
+                    // Match visual lifetime to track duration (capped)
+                    visualLifetime = Math.min(2000, Math.max(800, (track.duration || 1) * 1000));
+                }
+            }
+        } else {
+            // Fallback: original glowing cylinder
+            area.addComponent('render', { type: 'cylinder' });
+            area.setLocalScale(radius * 2, 0.2, radius * 2);
+            const mat = new pc.StandardMaterial();
+            mat.diffuse = new pc.Color(1, 0.5, 0.2);
+            mat.emissive = new pc.Color(1, 0.3, 0.1);
+            mat.emissiveIntensity = 3;
+            mat.opacity = 0.5;
+            mat.blendType = pc.BLEND_ADDITIVE;
+            mat.update();
+            for (const mi of area.render!.meshInstances) mi.material = mat;
+        }
+
+        // Damage all enemies in radius once
         const enemies = this.app.root.findByTag('enemy') as pc.Entity[];
         for (const enemy of enemies) {
             const enemyPos = enemy.getPosition();
@@ -308,7 +345,7 @@ export class CombatSystem {
             }
         }
 
-        setTimeout(() => { if (area.parent) area.destroy(); }, 300);
+        setTimeout(() => { if (area.parent) area.destroy(); }, visualLifetime);
     }
 
     clear(): void {
