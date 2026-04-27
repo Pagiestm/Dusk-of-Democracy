@@ -2,20 +2,35 @@ import type { Server, Socket } from 'socket.io';
 import type { RoomManager } from '../rooms/RoomManager.js';
 
 export function registerGameHandlers(io: Server, socket: Socket, roomManager: RoomManager): void {
-    let snapRelayCount = 0;
+    let playerSnapRelayCount = 0;
+    let worldSnapRelayCount = 0;
 
-    // ── Snapshot relay (host → clients) ──
+    // ── Player snapshot relay (host → clients) ──
 
-    socket.on('game:snapshot', (snapshot: unknown) => {
+    socket.on('game:players', (snapshot: unknown) => {
         const room = roomManager.getRoomBySocket(socket);
         if (!room || room.status !== 'playing') return;
         if (room.hostId !== socket.id) return;
 
-        snapRelayCount++;
-        if (snapRelayCount <= 3 || snapRelayCount % 200 === 0) {
-            console.log(`[Relay] Snapshot #${snapRelayCount} → room ${room.code} (${room.players.size} players)`);
+        playerSnapRelayCount++;
+        if (playerSnapRelayCount <= 3 || playerSnapRelayCount % 300 === 0) {
+            console.log(`[Relay] Player snapshot #${playerSnapRelayCount} → room ${room.code} (${room.players.size} players)`);
         }
-        socket.to(room.id).emit('game:snapshot', snapshot);
+        socket.to(room.id).emit('game:players', snapshot);
+    });
+
+    // ── World snapshot relay (host → clients) ──
+
+    socket.on('game:world', (snapshot: unknown) => {
+        const room = roomManager.getRoomBySocket(socket);
+        if (!room || room.status !== 'playing') return;
+        if (room.hostId !== socket.id) return;
+
+        worldSnapRelayCount++;
+        if (worldSnapRelayCount <= 3 || worldSnapRelayCount % 200 === 0) {
+            console.log(`[Relay] World snapshot #${worldSnapRelayCount} → room ${room.code} (${room.players.size} players)`);
+        }
+        socket.to(room.id).emit('game:world', snapshot);
     });
 
     // ── Input relay (client → host) ──

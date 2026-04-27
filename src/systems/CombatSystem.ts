@@ -95,6 +95,14 @@ export class CombatSystem {
         const weapons = this.remoteWeapons.get(playerId);
         if (!weapons) return;
 
+        // Host-authoritative auto-aim for remote players: keep multiplayer behavior
+        // consistent even if client aim vectors are noisy or stale.
+        const auto = this.computeAutoAim(entity);
+        if (auto) {
+            aimX = auto.x;
+            aimZ = auto.z;
+        }
+
         this.currentOwnerId = playerId;
         for (const weapon of weapons) {
             if (weapon.cooldownTimer <= 0) {

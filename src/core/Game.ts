@@ -10,7 +10,8 @@ import { PlayerStats, CharacterDef } from "../types";
 import { InputManager } from "./InputManager";
 import {
   NetworkManager,
-  FullSnapshot,
+  PlayerSnapshot,
+  WorldSnapshot,
   EntitySnapshot,
   PlayerNetState,
   DamageEvent,
@@ -37,7 +38,8 @@ import { XPPickup } from "../scripts/XPPickup";
 import { UIManager } from "../ui/UIManager";
 import { AudioManager } from "./AudioManager";
 
-const SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz — smoother for clients
+const PLAYER_SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz for responsive remote players
+const WORLD_SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz to keep enemy behavior close to solo feel
 
 let nextNetId = 1;
 function allocNetId(): number {
@@ -57,7 +59,8 @@ export class Game {
 
   // Multiplayer
   isMultiplayerGame: boolean = false;
-  private snapshotTimer: number = 0;
+  private playerSnapshotTimer: number = 0;
+  private worldSnapshotTimer: number = 0;
   private hostDead: boolean = false;
 
   // Host: remote players (keyed by socket.id)
@@ -189,6 +192,8 @@ export class Game {
   private setupEvents(): void {
     this.app.on("enemy:died", (entity: pc.Entity, _xpReward: number) => {
       if (this.isClient) return;
+      if ((entity as any).__deathProcessed) return;
+      (entity as any).__deathProcessed = true;
 
       this.killCount++;
       this.audioManager.playSfx("enemyDeath");
@@ -334,11 +339,15 @@ export class Game {
       });
     };
 
-    // Client: receive snapshots from host
-    this.network.onSnapshot = (snap: FullSnapshot) => {
-      // Apply snapshot on any non-host client
+    this.network.onPlayerSnapshot = (snap: PlayerSnapshot) => {
       if (this.isMultiplayerGame && !this.network.isHost) {
-        this.applySnapshot(snap);
+        this.applyPlayerSnapshot(snap);
+      }
+    };
+
+    this.network.onWorldSnapshot = (snap: WorldSnapshot) => {
+      if (this.isMultiplayerGame && !this.network.isHost) {
+        this.applyWorldSnapshot(snap);
       }
     };
 
@@ -696,10 +705,16 @@ export class Game {
         if (this.isMultiplayerGame) {
           this.checkRemotePlayerDeaths();
 
-          this.snapshotTimer += dt;
-          if (this.snapshotTimer >= SNAPSHOT_INTERVAL) {
-            this.snapshotTimer = 0;
-            this.broadcastSnapshot();
+          this.playerSnapshotTimer += dt;
+          this.worldSnapshotTimer += dt;
+
+          if (this.playerSnapshotTimer >= PLAYER_SNAPSHOT_INTERVAL) {
+            this.playerSnapshotTimer = 0;
+            this.broadcastPlayerSnapshot();
+          }
+          if (this.worldSnapshotTimer >= WORLD_SNAPSHOT_INTERVAL) {
+            this.worldSnapshotTimer = 0;
+            this.broadcastWorldSnapshot();
           }
         }
       } else {
@@ -736,10 +751,16 @@ export class Game {
         this.isMultiplayerGame &&
         this.isHost
       ) {
-        this.snapshotTimer += dt;
-        if (this.snapshotTimer >= SNAPSHOT_INTERVAL) {
-          this.snapshotTimer = 0;
-          this.broadcastSnapshot();
+        this.playerSnapshotTimer += dt;
+        this.worldSnapshotTimer += dt;
+
+        if (this.playerSnapshotTimer >= PLAYER_SNAPSHOT_INTERVAL) {
+          this.playerSnapshotTimer = 0;
+          this.broadcastPlayerSnapshot();
+        }
+        if (this.worldSnapshotTimer >= WORLD_SNAPSHOT_INTERVAL) {
+          this.worldSnapshotTimer = 0;
+          this.broadcastWorldSnapshot();
         }
       }
     }
@@ -803,6 +824,10 @@ export class Game {
         0.5,
         pos.z + (predictedZ - pos.z) * t,
       );
+      const isMoving =
+        Math.abs(predictedX - pos.x) > 0.015 ||
+        Math.abs(predictedZ - pos.z) > 0.015;
+      this.updateRemoteAnimationState(entity, isMoving);
       if (ta !== undefined) {
         const cur = entity.getEulerAngles();
         entity.setEulerAngles(0, cur.y + this.angleDiff(cur.y, ta) * t, 0);
@@ -816,6 +841,8 @@ export class Game {
       const tz = (entity as any).__targetZ;
       const ty = (entity as any).__targetY;
       const etype = (entity as any).__entityType;
+      const ta = (entity as any).__targetAngle;
+      const animState = (entity as any).__animState;
       if (tx === undefined) continue;
 
       const pos = entity.getPosition();
@@ -826,6 +853,19 @@ export class Game {
         finalY,
         pos.z + (tz - pos.z) * t,
       );
+
+      if (ta !== undefined) {
+        const cur = entity.getEulerAngles();
+        entity.setEulerAngles(0, cur.y + this.angleDiff(cur.y, ta) * t, 0);
+      }
+
+      if (etype === "enemy") {
+        const modelEntity = (entity as any).__modelEntity as pc.Entity | undefined;
+        const layer = modelEntity?.anim?.baseLayer;
+        if (layer && animState && layer.activeState !== animState) {
+          layer.transition(animState, animState === "attack" ? 0.08 : 0.12);
+        }
+      }
 
       // Spin pickups
       if (etype === "pickup") {
@@ -859,6 +899,7 @@ export class Game {
 
       const pos = entity.getPosition();
       const len = Math.sqrt(data.moveX * data.moveX + data.moveZ * data.moveZ);
+      const isMoving = len > 0.01;
       if (len > 0) {
         const nx = data.moveX / len;
         const nz = data.moveZ / len;
@@ -868,6 +909,7 @@ export class Game {
           Math.max(-39, Math.min(39, pos.z + nz * speed * dt)),
         );
       }
+      this.updateRemoteAnimationState(entity, isMoving);
 
       if (data.aimX !== 0 || data.aimZ !== 0) {
         const angle = Math.atan2(data.aimX, data.aimZ) * (180 / Math.PI);
@@ -893,12 +935,11 @@ export class Game {
   //  HOST: SNAPSHOT BROADCAST
   // ═══════════════════════════════════════════════════════════════════
 
-  private broadcastSnapshot(): void {
+  private broadcastPlayerSnapshot(): void {
     if (!this.playerEntity) return;
 
     const pos = this.playerEntity.getPosition();
     const ang = this.playerEntity.getEulerAngles();
-    // Global level & XP progress (shared by all)
     const globalLevel = this.xpSystem.currentLevel;
     const globalXpProgress = this.xpSystem.getProgress();
 
@@ -948,6 +989,14 @@ export class Game {
       });
     }
 
+    this.network.sendPlayerSnapshot({
+      tick: Math.floor(this.gameTime * 30),
+      gameTime: this.gameTime,
+      players,
+    });
+  }
+
+  private broadcastWorldSnapshot(): void {
     const entities: EntitySnapshot[] = [];
 
     for (const e of this.app.root.findByTag("enemy") as pc.Entity[]) {
@@ -966,9 +1015,13 @@ export class Game {
         defId: def?.id || "basic",
         x: ep.x,
         z: ep.z,
+        angle: e.getEulerAngles().y,
         hp: health?.hp ?? 0,
         maxHp: health?.maxHp ?? 20,
         scale: def?.scale ?? 0.8,
+        animState:
+          ((e as any).__modelEntity as pc.Entity | undefined)?.anim?.baseLayer
+            ?.activeState ?? "run",
       });
     }
 
@@ -1015,7 +1068,7 @@ export class Game {
       });
     }
 
-    this.network.sendSnapshot({
+    this.network.sendWorldSnapshot({
       tick: Math.floor(this.gameTime * 20),
       gameTime: this.gameTime,
       wave: this.waveSystem.currentWave,
@@ -1025,7 +1078,6 @@ export class Game {
       completedWave: this.completedWave,
       state: this.state,
       readyPlayers: Array.from(this.readyPlayers),
-      players,
       entities,
       damageEvents: this.pendingDamageEvents,
     });
@@ -1036,29 +1088,8 @@ export class Game {
   //  CLIENT: APPLY SNAPSHOT
   // ═══════════════════════════════════════════════════════════════════
 
-  private applySnapshot(snap: FullSnapshot): void {
+  private applyPlayerSnapshot(snap: PlayerSnapshot): void {
     this.gameTime = snap.gameTime;
-    this.killCount = snap.killCount;
-    this.waveSystem.currentWave = snap.wave;
-    this.completedWave = snap.completedWave ?? this.completedWave;
-    (this.app as any).__nightFactor = snap.nightFactor;
-    (this.app as any).__timeOfDay = snap.timeOfDay;
-
-    // Sync ready players list
-    this.readyPlayers = new Set(snap.readyPlayers || []);
-
-    // Sync game state from host (PLAYING ↔ WAVE_END ↔ LEVEL_UP transitions)
-    const hostState = snap.state as GameState;
-    if (hostState && hostState !== this.state) {
-      const allowed: GameState[] = [
-        GameState.PLAYING,
-        GameState.WAVE_END,
-        GameState.LEVEL_UP,
-      ];
-      if (allowed.includes(hostState) && allowed.includes(this.state)) {
-        this.setState(hostState);
-      }
-    }
 
     // Update local player from host's authoritative state
     const myState = snap.players.find((p) => p.id === this.network.myId);
@@ -1093,6 +1124,11 @@ export class Game {
           );
         }
       }
+      const input = this.inputManager.getState();
+      const movingLocal =
+        Math.abs(input.moveDirection.x) > 0.01 ||
+        Math.abs(input.moveDirection.y) > 0.01;
+      this.updateRemoteAnimationState(this.playerEntity, movingLocal);
       this.playerStats.hp = myState.hp;
       this.playerStats.maxHp = myState.maxHp;
       this.playerStats.speed = myState.speed;
@@ -1122,7 +1158,8 @@ export class Game {
       if (pState.alive) {
         const prevX = (entity as any).__targetX;
         const prevZ = (entity as any).__targetZ;
-        const prevSnapshotTime = (entity as any).__snapshotTime ?? snap.gameTime;
+        const prevSnapshotTime =
+          (entity as any).__snapshotTime ?? snap.gameTime;
         const snapshotDt = Math.max(snap.gameTime - prevSnapshotTime, 0.001);
 
         // Store targets for interpolation
@@ -1141,11 +1178,49 @@ export class Game {
       }
     }
 
-    // Remove dead remote players
+    // Remove disconnected/absent remote players
     for (const [pid, entity] of this.clientPlayerEntities) {
       if (!activePlayerIds.has(pid)) {
         entity.destroy();
         this.clientPlayerEntities.delete(pid);
+      }
+    }
+  }
+
+  private updateRemoteAnimationState(entity: pc.Entity, isMoving: boolean): void {
+    const modelEntity = (entity as any).__modelEntity as pc.Entity | undefined;
+    if (!modelEntity || !(entity as any).__hasAnims || !modelEntity.anim) return;
+
+    const layer = modelEntity.anim.baseLayer;
+    if (!layer) return;
+
+    const targetState = isMoving ? "run" : "idle";
+    if (layer.activeState !== targetState) {
+      layer.transition(targetState, 0.12);
+    }
+  }
+
+  private applyWorldSnapshot(snap: WorldSnapshot): void {
+    this.gameTime = snap.gameTime;
+    this.killCount = snap.killCount;
+    this.waveSystem.currentWave = snap.wave;
+    this.completedWave = snap.completedWave ?? this.completedWave;
+    (this.app as any).__nightFactor = snap.nightFactor;
+    (this.app as any).__timeOfDay = snap.timeOfDay;
+
+    // Sync ready players list
+    this.readyPlayers = new Set(snap.readyPlayers || []);
+
+    // Sync game state from host (PLAYING ↔ WAVE_END ↔ LEVEL_UP transitions)
+    const hostState = snap.state as GameState;
+    if (hostState && hostState !== this.state) {
+      const allowed: GameState[] = [
+        GameState.PLAYING,
+        GameState.WAVE_END,
+        GameState.LEVEL_UP,
+      ];
+      if (allowed.includes(hostState) && allowed.includes(this.state)) {
+        this.setState(hostState);
       }
     }
 
@@ -1173,22 +1248,23 @@ export class Game {
       (entity as any).__targetX = eSnap.x;
       (entity as any).__targetZ = eSnap.z;
       (entity as any).__targetY = yPos;
+      (entity as any).__targetAngle = eSnap.angle;
+      (entity as any).__animState = eSnap.animState;
       (entity as any).__entityType = eSnap.type;
       // Snap on first appearance
       if ((entity as any).__interpReady === undefined) {
         entity.setPosition(eSnap.x, yPos, eSnap.z);
+        if (eSnap.angle !== undefined) {
+          entity.setEulerAngles(0, eSnap.angle, 0);
+        }
         (entity as any).__interpReady = true;
       }
 
-      // Triggers for client animations based on HP
+      // Death animation state is driven by host animState snapshots.
       if (eSnap.type === "enemy") {
         const modelEntity = (entity as any).__modelEntity as pc.Entity;
         if (modelEntity && modelEntity.anim) {
-          if (
-            eSnap.hp !== undefined &&
-            eSnap.hp <= 0 &&
-            !(entity as any).__deadAnimPlayed
-          ) {
+          if (eSnap.animState === "die" && !(entity as any).__deadAnimPlayed) {
             modelEntity.anim.baseLayer?.transition("die", 0.1);
             (entity as any).__deadAnimPlayed = true;
           }
@@ -1761,7 +1837,8 @@ export class Game {
     this.clientLevel = 1;
     this.clientXpProgress = 0;
     this.clientGold = 0;
-    this.snapshotTimer = 0;
+    this.playerSnapshotTimer = 0;
+    this.worldSnapshotTimer = 0;
     nextNetId = 1;
 
     for (const e of this.app.root.findByTag("enemy")) e.destroy();

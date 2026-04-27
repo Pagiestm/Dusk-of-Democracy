@@ -22,6 +22,7 @@ export interface EntitySnapshot {
     maxHp?: number;
     angle?: number;
     scale?: number;
+    animState?: string;
 }
 
 export interface PlayerNetState {
@@ -50,7 +51,13 @@ export interface DamageEvent {
     armor: boolean;
 }
 
-export interface FullSnapshot {
+export interface PlayerSnapshot {
+    tick: number;
+    gameTime: number;
+    players: PlayerNetState[];
+}
+
+export interface WorldSnapshot {
     tick: number;
     gameTime: number;
     wave: number;
@@ -58,9 +65,8 @@ export interface FullSnapshot {
     nightFactor: number;
     timeOfDay: number;
     killCount: number;
-    state: string;          // GameState value for clients
-    readyPlayers: string[]; // IDs of players ready for next wave
-    players: PlayerNetState[];
+    state: string;
+    readyPlayers: string[];
     entities: EntitySnapshot[];
     damageEvents: DamageEvent[];
 }
@@ -83,7 +89,8 @@ export class NetworkManager {
     onRoomUpdated: (() => void) | null = null;
     onStartSelection: (() => void) | null = null;
     onGameStart: ((players: RoomPlayer[]) => void) | null = null;
-    onSnapshot: ((snap: FullSnapshot) => void) | null = null;
+    onPlayerSnapshot: ((snap: PlayerSnapshot) => void) | null = null;
+    onWorldSnapshot: ((snap: WorldSnapshot) => void) | null = null;
     onRemoteInput: ((data: { playerId: string; moveX: number; moveZ: number; aimX: number; aimZ: number; fire: boolean }) => void) | null = null;
     onError: ((msg: string) => void) | null = null;
     onGameOver: (() => void) | null = null;
@@ -167,14 +174,22 @@ export class NetworkManager {
 
         // ── In-Game ──
 
-        // Track snapshot count for debugging
-        let snapCount = 0;
-        this.socket.on('game:snapshot', (snap: FullSnapshot) => {
-            snapCount++;
-            if (snapCount <= 3 || snapCount % 100 === 0) {
-                console.log(`[Net] Snapshot #${snapCount} received: ${snap.players.length} players, ${snap.entities.length} entities`);
+        let playerSnapCount = 0;
+        this.socket.on('game:players', (snap: PlayerSnapshot) => {
+            playerSnapCount++;
+            if (playerSnapCount <= 3 || playerSnapCount % 100 === 0) {
+                console.log(`[Net] Player snapshot #${playerSnapCount} received: ${snap.players.length} players`);
             }
-            this.onSnapshot?.(snap);
+            this.onPlayerSnapshot?.(snap);
+        });
+
+        let worldSnapCount = 0;
+        this.socket.on('game:world', (snap: WorldSnapshot) => {
+            worldSnapCount++;
+            if (worldSnapCount <= 3 || worldSnapCount % 100 === 0) {
+                console.log(`[Net] World snapshot #${worldSnapCount} received: ${snap.entities.length} entities`);
+            }
+            this.onWorldSnapshot?.(snap);
         });
 
         this.socket.on('game:remoteInput', (data) => {
@@ -241,8 +256,12 @@ export class NetworkManager {
 
     // ─── In-Game ─────────────────────────────────────────────────
 
-    sendSnapshot(snap: FullSnapshot): void {
-        this.socket?.emit('game:snapshot', snap);
+    sendPlayerSnapshot(snap: PlayerSnapshot): void {
+        this.socket?.emit('game:players', snap);
+    }
+
+    sendWorldSnapshot(snap: WorldSnapshot): void {
+        this.socket?.emit('game:world', snap);
     }
 
     sendInput(data: { moveX: number; moveZ: number; aimX: number; aimZ: number; fire: boolean }): void {
