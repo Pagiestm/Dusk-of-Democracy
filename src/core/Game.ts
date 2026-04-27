@@ -735,8 +735,10 @@ export class Game {
           }
         }
       } else {
-        // CLIENT: prediction + interpolation + send input
-        this.updateClientPrediction(dt);
+        // CLIENT: prediction is handled by PlayerController on the local
+        // player (the same script that drives movement in solo). Don't
+        // double-move via updateClientPrediction or the player runs ahead
+        // of the host's authoritative position and gets snapped back.
         this.interpolateClientEntities(dt);
 
         // Send input every frame BUT only when it actually changes — keeps the
@@ -1085,13 +1087,13 @@ export class Game {
         this.netIdEntities.set(nid, ae);
       }
       const aep = ae.getPosition();
-      const s = ae.getLocalScale();
+      const radius = (ae as any).__effectRadius ?? 4;
       entities.push({
         nid,
         type: "area_effect",
         x: aep.x,
         z: aep.z,
-        scale: s.x,
+        scale: radius,
       });
     }
 
@@ -1512,7 +1514,7 @@ export class Game {
       if (explosionAsset) {
         const container = explosionAsset.resource as any;
         const visual = container.instantiateRenderEntity() as pc.Entity;
-        const radius = (snap.scale || 8) / 2;
+        const radius = snap.scale || 4;
         const modelScale = radius / 60;
         visual.setLocalScale(modelScale, modelScale, modelScale);
         visual.setLocalPosition(0, 0, 16 * modelScale);

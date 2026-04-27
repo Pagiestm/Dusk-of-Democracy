@@ -287,6 +287,9 @@ export class CombatSystem {
         const radius = def.areaRadius || 4;
         const area = new pc.Entity('area_effect');
         area.setPosition(pos.x, 0.1, pos.z);
+        // Stash the radius in the entity scale so the world snapshot picks it up
+        // and clients reproduce the same size.
+        (area as any).__effectRadius = radius;
         area.tags.add('area_effect');
         this.app.root.addChild(area);
 
