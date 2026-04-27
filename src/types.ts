@@ -44,6 +44,10 @@ export interface WeaponDef {
   spreadCount?: number;
   spreadAngle?: number;
   areaRadius?: number;
+  /** Optional GLB model used for the projectile visual (replaces the default sphere). */
+  projectileModelPath?: string;
+  /** Optional uniform scale applied to the projectile model. */
+  projectileModelScale?: number;
 }
 
 // === Enemies ===

@@ -254,7 +254,7 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale);
             this.tagProjectile(proj);
         }
     }
@@ -272,7 +272,7 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale);
             this.tagProjectile(proj);
         }
     }

@@ -22,6 +22,8 @@ export const WEAPONS: WeaponDef[] = [
         projectileLifetime: 1.5,
         spreadCount: 3,
         spreadAngle: 25,
+        projectileModelPath: 'assets/bird/bird.glb',
+        projectileModelScale: 0.12,
     },
     {
         id: 'bolivarian_blast',

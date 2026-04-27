@@ -15,14 +15,27 @@ export function createProjectile(
     lifetime: number,
     damage: number,
     color?: pc.Color,
-    isEnemy: boolean = false
+    isEnemy: boolean = false,
+    modelPath?: string,
+    modelScale?: number
 ): pc.Entity {
     const entity = new pc.Entity(`projectile_${projectileCounter++}`);
 
-    // Enemy projectiles use the GLB bullet model when available
-    const bulletAsset = isEnemy ? getCachedModel(BULLET_MODEL_PATH) : undefined;
+    // Pick the model: weapon-specific override > enemy default > none
+    const customAsset = modelPath ? getCachedModel(modelPath) : undefined;
+    const bulletAsset = !customAsset && isEnemy ? getCachedModel(BULLET_MODEL_PATH) : undefined;
 
-    if (bulletAsset) {
+    if (customAsset) {
+        const container = customAsset.resource as any;
+        const model = container.instantiateRenderEntity() as pc.Entity;
+        const s = modelScale ?? 1;
+        model.setLocalScale(s, s, s);
+        // Yaw the model toward direction. The bird model points along +X by default,
+        // so subtract 90° from the yaw computed for +Z forward.
+        const yaw = Math.atan2(direction.x, direction.z) * (180 / Math.PI) - 90;
+        model.setLocalEulerAngles(0, yaw, 0);
+        entity.addChild(model);
+    } else if (bulletAsset) {
         const container = bulletAsset.resource as any;
         const bullet = container.instantiateRenderEntity() as pc.Entity;
         bullet.setLocalScale(1.5, 1.5, 1.5);
