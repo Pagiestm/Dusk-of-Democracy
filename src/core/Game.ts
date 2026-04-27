@@ -38,9 +38,8 @@ import { XPPickup } from "../scripts/XPPickup";
 import { UIManager } from "../ui/UIManager";
 import { AudioManager } from "./AudioManager";
 
-const PLAYER_SNAPSHOT_INTERVAL = 1 / 25; // 25 Hz for responsive remote players
-const WORLD_SNAPSHOT_INTERVAL = 1 / 15; // 15 Hz — interpolation smooths the rest, big bandwidth saving
-const CLIENT_INPUT_INTERVAL = 1 / 20;   // 20 Hz — was every frame, which flooded the server
+const PLAYER_SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz for responsive remote players
+const WORLD_SNAPSHOT_INTERVAL = 1 / 20;  // 20 Hz — interpolation smooths the rest
 
 let nextNetId = 1;
 function allocNetId(): number {
@@ -62,7 +61,7 @@ export class Game {
   isMultiplayerGame: boolean = false;
   private playerSnapshotTimer: number = 0;
   private worldSnapshotTimer: number = 0;
-  private clientInputTimer: number = 0;
+  private lastInputSent: { mx: number; mz: number; ax: number; az: number } | null = null;
   private hostDead: boolean = false;
 
   // Host: remote players (keyed by socket.id)
@@ -740,18 +739,23 @@ export class Game {
         this.updateClientPrediction(dt);
         this.interpolateClientEntities(dt);
 
-        // Throttle input sending so we don't flood the server every frame
-        this.clientInputTimer += dt;
-        if (this.clientInputTimer >= CLIENT_INPUT_INTERVAL) {
-          this.clientInputTimer = 0;
-          const input = this.inputManager.getState();
-          this.network.sendInput({
-            moveX: input.moveDirection.x,
-            moveZ: input.moveDirection.y,
-            aimX: input.aimDirection.x,
-            aimZ: input.aimDirection.y,
-            fire: false,
-          });
+        // Send input every frame BUT only when it actually changes — keeps the
+        // host's authoritative state in sync without flooding the network.
+        const input = this.inputManager.getState();
+        const mx = input.moveDirection.x;
+        const mz = input.moveDirection.y;
+        const ax = input.aimDirection.x;
+        const az = input.aimDirection.y;
+        const last = this.lastInputSent;
+        const changed =
+          !last ||
+          Math.abs(mx - last.mx) > 0.01 ||
+          Math.abs(mz - last.mz) > 0.01 ||
+          Math.abs(ax - last.ax) > 0.05 ||
+          Math.abs(az - last.az) > 0.05;
+        if (changed) {
+          this.network.sendInput({ moveX: mx, moveZ: mz, aimX: ax, aimZ: az, fire: false });
+          this.lastInputSent = { mx, mz, ax, az };
         }
         this.uiManager.updateHUD();
       }
@@ -1130,20 +1134,22 @@ export class Game {
       }
 
       if (myState.alive) {
-        // Store server position for reconciliation (client-side prediction handles movement)
+        // Reconcile with the host's authoritative position.
+        // Client predicts every frame, then nudges toward the server pos.
         const currentPos = this.playerEntity.getPosition();
         const dx = myState.x - currentPos.x;
         const dz = myState.z - currentPos.z;
         const dist = Math.sqrt(dx * dx + dz * dz);
-        if (dist > 3.0) {
-          // Too far from server — snap to correct position
+        if (dist > 8.0) {
+          // Catastrophic desync (respawn, teleport, lag spike) — snap.
           this.playerEntity.setPosition(myState.x, 0.5, myState.z);
-        } else if (dist > 0.1) {
-          // Gentle correction toward server position
+        } else if (dist > 0.05) {
+          // Gentle exponential pull (~12% per snapshot) so small lags
+          // don't manifest as visible teleporting.
           this.playerEntity.setPosition(
-            currentPos.x + dx * 0.3,
+            currentPos.x + dx * 0.12,
             0.5,
-            currentPos.z + dz * 0.3,
+            currentPos.z + dz * 0.12,
           );
         }
       }
