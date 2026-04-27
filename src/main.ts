@@ -6,6 +6,7 @@ import { PlayerController } from './scripts/PlayerController';
 import { CameraFollow } from './scripts/CameraFollow';
 import { EnemyAI } from './scripts/EnemyAI';
 import { Projectile } from './scripts/Projectile';
+import { Wall } from './scripts/Wall';
 import { Health } from './scripts/Health';
 import { XPPickup } from './scripts/XPPickup';
 import { DayNightCycle } from './scripts/DayNightCycle';

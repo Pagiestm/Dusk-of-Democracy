@@ -2,6 +2,8 @@ import * as pc from 'playcanvas';
 import { WeaponDef } from '../types';
 import { createProjectile } from '../entities/ProjectileFactory';
 import { AimSettings } from '../core/AimSettings';
+import { getCachedModel } from '../core/AssetLoader';
+import { Wall } from '../scripts/Wall';
 
 interface ActiveWeapon {
     def: WeaponDef;
@@ -168,7 +170,63 @@ export class CombatSystem {
             case 'orbit':
                 this.fireSingle(spawnPos, aimX, aimZ, def, damage, extraProjectiles);
                 break;
+            case 'wall':
+                this.fireWall(spawnPos, aimX, aimZ, def, damage);
+                break;
         }
+    }
+
+    private fireWall(pos: pc.Vec3, aimX: number, aimZ: number, def: WeaponDef, damage: number): void {
+        const len = Math.sqrt(aimX * aimX + aimZ * aimZ);
+        if (len < 0.01) return;
+        const dirX = aimX / len;
+        const dirZ = aimZ / len;
+
+        // Place the wall in front of the player
+        const distAhead = 3;
+        const wallX = pos.x + dirX * distAhead;
+        const wallZ = pos.z + dirZ * distAhead;
+
+        // Wall width covers the spread arc at the spawn distance
+        const arcRad = ((def.spreadAngle || 40) * Math.PI) / 180;
+        const halfWidth = Math.max(5, distAhead * Math.tan(arcRad / 2) + 4);
+
+        const wall = new pc.Entity('wall');
+        wall.setPosition(wallX, 0, wallZ);
+        // Yaw so the wall's local X axis spans across the aim direction
+        const yaw = Math.atan2(dirX, dirZ) * (180 / Math.PI);
+        wall.setLocalEulerAngles(0, yaw + 90, 0);
+
+        // Visual: instantiated wall GLB scaled to halfWidth
+        const wallAsset = getCachedModel('assets/wall/wall.glb');
+        if (wallAsset) {
+            const container = wallAsset.resource as any;
+            const visual = container.instantiateRenderEntity() as pc.Entity;
+            // The wall model spans ~3.3 along X. Scale so it covers `halfWidth*2`
+            const scaleX = (halfWidth * 2) / 3.3;
+            visual.setLocalScale(scaleX, 1.5, 1);
+            wall.addChild(visual);
+        } else {
+            // Fallback box
+            wall.addComponent('render', { type: 'box' });
+            wall.setLocalScale(halfWidth * 2, 1.5, 1);
+            const mat = new pc.StandardMaterial();
+            mat.diffuse = new pc.Color(0.45, 0.30, 0.15);
+            mat.update();
+            for (const mi of wall.render!.meshInstances) mi.material = mat;
+        }
+
+        wall.addComponent('script');
+        const wallScript = wall.script!.create(Wall) as unknown as Wall;
+        wallScript.lifetime = def.projectileLifetime;
+        wallScript.damage = damage;
+        wallScript.halfWidth = halfWidth;
+        wallScript.halfDepth = 0.5;
+
+        if (this.currentOwnerId) (wall as any).__ownerId = this.currentOwnerId;
+
+        wall.tags.add('wall_effect');
+        this.app.root.addChild(wall);
     }
 
     private tagProjectile(proj: pc.Entity): void {

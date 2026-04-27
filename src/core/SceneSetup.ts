@@ -15,6 +15,7 @@ export function getMapModelPaths(): string[] {
         paths.add(MAP_BASE_PATH + c.glb);
     }
     paths.add('assets/bullet/bullet.glb');
+    paths.add('assets/wall/wall.glb');
     return Array.from(paths);
 }
 

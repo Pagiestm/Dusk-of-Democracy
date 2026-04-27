@@ -30,7 +30,7 @@ export interface CharacterDef {
 }
 
 // === Weapons ===
-export type WeaponPattern = "single" | "spread" | "orbit" | "area";
+export type WeaponPattern = "single" | "spread" | "orbit" | "area" | "wall";
 
 export interface WeaponDef {
   id: string;
