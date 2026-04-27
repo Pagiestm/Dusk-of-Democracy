@@ -226,8 +226,8 @@ export class Game {
       }
 
       // Disable AI and collision so it doesn't block or move
-      const ai = entity.script?.get("enemyAI") as EnemyAI;
-      if (ai) ai.enabled = false;
+      const ai = entity.script?.get("enemyAI");
+      if (ai instanceof EnemyAI) ai.enabled = false;
 
       const hasAnims = (entity as any).__hasAnims;
       if (hasAnims) {
@@ -1621,8 +1621,9 @@ export class Game {
 
     // Enemy touches player
     if (layerA === CollisionLayer.ENEMY && layerB === CollisionLayer.PLAYER) {
-      const enemyAI = a.script?.get("enemyAI") as EnemyAI | undefined;
-      if (!enemyAI || !enemyAI.canDealContactDamage()) return;
+      const enemyAI = a.script?.get("enemyAI");
+      if (!(enemyAI instanceof EnemyAI) || !enemyAI.canDealContactDamage())
+        return;
 
       let damage = enemyAI.contactDamage;
 
