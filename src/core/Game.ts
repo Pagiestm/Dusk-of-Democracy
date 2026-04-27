@@ -17,7 +17,7 @@ import {
   DamageEvent,
 } from "./NetworkManager";
 import { setupScene, getMapModelPaths } from "./SceneSetup";
-import { preloadModels } from "./AssetLoader";
+import { preloadModels, getCachedModel } from "./AssetLoader";
 import { createPlayer } from "../entities/PlayerFactory";
 import { createRemotePlayerVisual } from "../entities/RemotePlayerFactory";
 import { CollisionSystem } from "../systems/CollisionSystem";
@@ -1507,18 +1507,51 @@ export class Game {
       entity.setEulerAngles(45, 45, 0);
       entity.setPosition(snap.x, 0.3, snap.z);
     } else if (snap.type === "area_effect") {
-      entity.addComponent("render", { type: "cylinder" });
-      const mat = new pc.StandardMaterial();
-      mat.diffuse = new pc.Color(1, 0.5, 0.2);
-      mat.emissive = new pc.Color(1, 0.3, 0.1);
-      mat.emissiveIntensity = 3;
-      mat.opacity = 0.5;
-      mat.blendType = pc.BLEND_ADDITIVE;
-      mat.update();
-      for (const mi of entity.render!.meshInstances) mi.material = mat;
-      const s = snap.scale || 8;
-      entity.setLocalScale(s, 0.2, s);
-      entity.setPosition(snap.x, 0.1, snap.z);
+      // Use the animated explosion model when available (synced with host visuals)
+      const explosionAsset = getCachedModel("assets/explosion/explosion.glb");
+      if (explosionAsset) {
+        const container = explosionAsset.resource as any;
+        const visual = container.instantiateRenderEntity() as pc.Entity;
+        const radius = (snap.scale || 8) / 2;
+        const modelScale = radius / 60;
+        visual.setLocalScale(modelScale, modelScale, modelScale);
+        visual.setLocalPosition(0, 0, 16 * modelScale);
+        entity.addChild(visual);
+        const anims = (container as any).animations as pc.Asset[] | undefined;
+        if (anims && anims.length > 0) {
+          visual.addComponent("anim", { activate: true, speed: 1 });
+          const track = anims[0].resource as pc.AnimTrack;
+          if (track) {
+            visual.anim!.loadStateGraph(new pc.AnimStateGraph({
+              layers: [{
+                name: "Base",
+                states: [
+                  { name: "START", speed: 1 },
+                  { name: "play", speed: 1, loop: false },
+                ],
+                transitions: [{ from: "START", to: "play", time: 0, conditions: [] }],
+              }],
+              parameters: {},
+            }));
+            visual.anim!.assignAnimation("play", track);
+          }
+        }
+        entity.setPosition(snap.x, 0.1, snap.z);
+      } else {
+        // Fallback cylinder
+        entity.addComponent("render", { type: "cylinder" });
+        const mat = new pc.StandardMaterial();
+        mat.diffuse = new pc.Color(1, 0.5, 0.2);
+        mat.emissive = new pc.Color(1, 0.3, 0.1);
+        mat.emissiveIntensity = 3;
+        mat.opacity = 0.5;
+        mat.blendType = pc.BLEND_ADDITIVE;
+        mat.update();
+        for (const mi of entity.render!.meshInstances) mi.material = mat;
+        const s = snap.scale || 8;
+        entity.setLocalScale(s, 0.2, s);
+        entity.setPosition(snap.x, 0.1, snap.z);
+      }
     }
 
     this.app.root.addChild(entity);
