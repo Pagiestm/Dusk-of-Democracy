@@ -11,15 +11,24 @@ import { InputManager } from "./InputManager";
 import {
   NetworkManager,
   PlayerSnapshot,
-  WorldSnapshot,
-  EntitySnapshot,
   PlayerNetState,
-  DamageEvent,
+  EnemySpawnEvent,
+  EnemyDieEvent,
+  ProjectileFireEvent,
+  PickupSpawnEvent,
+  PickupCollectedEvent,
+  AreaEffectEvent,
+  WallEffectEvent,
+  StateSyncEvent,
+  DamageEventNet,
 } from "./NetworkManager";
 import { setupScene, getMapModelPaths } from "./SceneSetup";
 import { preloadModels, getCachedModel } from "./AssetLoader";
 import { createPlayer } from "../entities/PlayerFactory";
 import { createRemotePlayerVisual } from "../entities/RemotePlayerFactory";
+import { createEnemy } from "../entities/EnemyFactory";
+import { createProjectile } from "../entities/ProjectileFactory";
+import { createXPPickup } from "../entities/PickupFactory";
 import { CollisionSystem } from "../systems/CollisionSystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { WaveSystem } from "../systems/WaveSystem";
@@ -38,8 +47,8 @@ import { XPPickup } from "../scripts/XPPickup";
 import { UIManager } from "../ui/UIManager";
 import { AudioManager } from "./AudioManager";
 
-const PLAYER_SNAPSHOT_INTERVAL = 1 / 30; // 30 Hz for responsive remote players
-const WORLD_SNAPSHOT_INTERVAL = 1 / 20;  // 20 Hz — interpolation smooths the rest
+const PLAYER_SNAPSHOT_INTERVAL = 1 / 10; // 10 Hz — reconciliation only (clients predict locally)
+const STATE_SYNC_INTERVAL = 1 / 5;      // 5 Hz — lightweight metadata sync
 
 let nextNetId = 1;
 function allocNetId(): number {
@@ -60,8 +69,7 @@ export class Game {
   // Multiplayer
   isMultiplayerGame: boolean = false;
   private playerSnapshotTimer: number = 0;
-  private worldSnapshotTimer: number = 0;
-  private lastInputSent: { mx: number; mz: number; ax: number; az: number } | null = null;
+  private stateSyncTimer: number = 0;
   private hostDead: boolean = false;
 
   // Host: remote players (keyed by socket.id)
@@ -83,8 +91,7 @@ export class Game {
   // Wave ready system (multiplayer)
   readyPlayers: Set<string> = new Set();
 
-  // Damage events buffer (host → clients)
-  private pendingDamageEvents: DamageEvent[] = [];
+
 
   // Client-side pending level-ups (from snapshot)
   private clientPendingLevelUps: number = 0;
@@ -93,9 +100,12 @@ export class Game {
   private entityNetIds: Map<pc.Entity, number> = new Map();
   private netIdEntities: Map<number, pc.Entity> = new Map();
 
-  // Client: rendered entities from snapshots
+  // Client: rendered entities from events
   private clientEntities: Map<number, pc.Entity> = new Map();
   private clientPlayerEntities: Map<string, pc.Entity> = new Map();
+
+  // Client: input dedup to avoid flooding network
+  private lastInputSent: { mx: number; mz: number; ax: number; az: number } | null = null;
 
   // Systems
   collisionSystem: CollisionSystem;
@@ -227,6 +237,10 @@ export class Game {
 
       const nid = this.entityNetIds.get(entity);
       if (nid !== undefined) {
+        // Notify clients that this enemy died
+        if (this.isMultiplayerGame) {
+          this.network.sendEnemyDie({ nid });
+        }
         this.entityNetIds.delete(entity);
         this.netIdEntities.delete(nid);
       }
@@ -247,14 +261,14 @@ export class Game {
       );
     });
 
-    // Collect damage events for snapshot (host → clients)
+    // Send damage events immediately to clients (event-driven)
     this.app.on(
       "damage:dealt",
       (entity: any, damage: number, armorAbsorbed: boolean) => {
         if (!this.isHost || !this.isMultiplayerGame) return;
         if (!entity?.getPosition) return;
         const pos = entity.getPosition();
-        this.pendingDamageEvents.push({
+        this.network.sendDamageEvent({
           x: pos.x,
           z: pos.z,
           damage,
@@ -325,6 +339,94 @@ export class Game {
         }
       },
     );
+
+    // Host: relay enemy spawn events to clients
+    this.app.on(
+      "enemy:spawned",
+      (entity: pc.Entity, modifiedDef: any, x: number, z: number) => {
+        if (!this.isHost || !this.isMultiplayerGame) return;
+        // Allocate network ID for this enemy
+        let nid = this.entityNetIds.get(entity);
+        if (nid === undefined) {
+          nid = allocNetId();
+          this.entityNetIds.set(entity, nid);
+          this.netIdEntities.set(nid, entity);
+        }
+        this.network.sendEnemySpawn({
+          nid,
+          defId: modifiedDef.id,
+          x,
+          z,
+          hp: modifiedDef.hp,
+          damage: modifiedDef.damage,
+          speed: modifiedDef.speed,
+          scale: modifiedDef.scale,
+        });
+      },
+    );
+
+    // Host: relay pickup spawn events to clients
+    this.app.on(
+      "pickup:spawned",
+      (entity: pc.Entity, xpValue: number, x: number, z: number) => {
+        if (!this.isHost || !this.isMultiplayerGame) return;
+        let nid = this.entityNetIds.get(entity);
+        if (nid === undefined) {
+          nid = allocNetId();
+          this.entityNetIds.set(entity, nid);
+          this.netIdEntities.set(nid, entity);
+        }
+        this.network.sendPickupSpawn({ nid, x, z, xpValue });
+      },
+    );
+
+    // Host: relay projectile fire events to clients
+    this.app.on(
+      "projectile:fired",
+      (entity: pc.Entity, info: { ownerId: string | null; dirX: number; dirZ: number; speed: number; lifetime: number; damage: number; isEnemy: boolean; modelPath?: string; modelScale?: number; text?: string }) => {
+        if (!this.isHost || !this.isMultiplayerGame) return;
+        let nid = this.entityNetIds.get(entity);
+        if (nid === undefined) {
+          nid = allocNetId();
+          this.entityNetIds.set(entity, nid);
+          this.netIdEntities.set(nid, entity);
+        }
+        const pos = entity.getPosition();
+        this.network.sendProjectileFire({
+          nid,
+          playerId: info.ownerId || "",
+          x: pos.x,
+          z: pos.z,
+          dirX: info.dirX,
+          dirZ: info.dirZ,
+          speed: info.speed,
+          lifetime: info.lifetime,
+          damage: info.damage,
+          isEnemy: info.isEnemy,
+          modelPath: info.modelPath,
+          modelScale: info.modelScale,
+          text: info.text,
+        });
+      },
+    );
+
+    // Host: relay area effect events to clients
+    this.app.on(
+      "areaEffect:fired",
+      (x: number, z: number, radius: number) => {
+        if (!this.isHost || !this.isMultiplayerGame) return;
+        this.network.sendAreaEffect({ x, z, radius });
+      },
+    );
+
+    // Host: relay wall effect events to clients
+    this.app.on(
+      "wallEffect:fired",
+      (x: number, z: number, dirX: number, dirZ: number, halfWidth: number, damage: number, lifetime: number) => {
+        if (!this.isHost || !this.isMultiplayerGame) return;
+        this.network.sendWallEffect({ x, z, dirX, dirZ, halfWidth, damage, lifetime });
+      },
+    );
   }
 
   private setupNetworkCallbacks(): void {
@@ -346,10 +448,51 @@ export class Game {
       }
     };
 
-    this.network.onWorldSnapshot = (snap: WorldSnapshot) => {
-      if (this.isMultiplayerGame && !this.network.isHost) {
-        this.applyWorldSnapshot(snap);
-      }
+    // ── Event-driven sync (clients receive from host) ──
+
+    this.network.onEnemySpawn = (data: EnemySpawnEvent) => {
+      if (!this.isClient) return;
+      this.handleClientEnemySpawn(data);
+    };
+
+    this.network.onEnemyDie = (data: EnemyDieEvent) => {
+      if (!this.isClient) return;
+      this.handleClientEnemyDie(data);
+    };
+
+    this.network.onProjectileFire = (data: ProjectileFireEvent) => {
+      if (!this.isClient) return;
+      this.handleClientProjectileFire(data);
+    };
+
+    this.network.onPickupSpawn = (data: PickupSpawnEvent) => {
+      if (!this.isClient) return;
+      this.handleClientPickupSpawn(data);
+    };
+
+    this.network.onPickupCollected = (data: PickupCollectedEvent) => {
+      if (!this.isClient) return;
+      this.handleClientPickupCollected(data);
+    };
+
+    this.network.onAreaEffect = (data: AreaEffectEvent) => {
+      if (!this.isClient) return;
+      this.handleClientAreaEffect(data);
+    };
+
+    this.network.onWallEffect = (data: WallEffectEvent) => {
+      if (!this.isClient) return;
+      this.handleClientWallEffect(data);
+    };
+
+    this.network.onStateSync = (data: StateSyncEvent) => {
+      if (!this.isClient) return;
+      this.applyStateSync(data);
+    };
+
+    this.network.onDamageEvent = (data: DamageEventNet) => {
+      if (!this.isClient) return;
+      this.uiManager.showDamageAtWorldPos(data.x, data.z, data.damage, data.armor);
     };
 
     // Host starts selection → go to character select
@@ -504,10 +647,19 @@ export class Game {
     };
 
     if (this.isClient) {
-      // CLIENT: visual-only entity — NO scripts, NO physics
-      // Position is driven entirely by host snapshots
+      // CLIENT: visual entity with local weapon firing + collision
       this.playerEntity = createRemotePlayerVisual(this.app, characterId);
       this.playerEntity.name = "player";
+      this.playerEntity.tags.add("player");
+      this.collisionSystem.register(
+        this.playerEntity,
+        0.4,
+        CollisionLayer.PLAYER,
+      );
+      // Enable local weapon firing for instant feedback
+      this.combatSystem.setPlayer(this.playerEntity);
+      const weaponDef = WEAPONS.find((w) => w.id === weaponId);
+      if (weaponDef) this.combatSystem.addWeapon(weaponDef);
     } else {
       // HOST or SOLO: full player with scripts (identical to solo)
       this.playerEntity = createPlayer(this.app, charDef);
@@ -723,23 +875,29 @@ export class Game {
           this.checkRemotePlayerDeaths();
 
           this.playerSnapshotTimer += dt;
-          this.worldSnapshotTimer += dt;
+          this.stateSyncTimer += dt;
 
           if (this.playerSnapshotTimer >= PLAYER_SNAPSHOT_INTERVAL) {
             this.playerSnapshotTimer = 0;
             this.broadcastPlayerSnapshot();
           }
-          if (this.worldSnapshotTimer >= WORLD_SNAPSHOT_INTERVAL) {
-            this.worldSnapshotTimer = 0;
-            this.broadcastWorldSnapshot();
+          if (this.stateSyncTimer >= STATE_SYNC_INTERVAL) {
+            this.stateSyncTimer = 0;
+            this.broadcastStateSync();
           }
         }
       } else {
-        // CLIENT: prediction is handled by PlayerController on the local
-        // player (the same script that drives movement in solo). Don't
-        // double-move via updateClientPrediction or the player runs ahead
-        // of the host's authoritative position and gets snapped back.
-        this.interpolateClientEntities(dt);
+        // CLIENT: full local simulation + send input
+        this.updateClientPrediction(dt);
+        this.interpolateRemotePlayers(dt);
+        this.registerNewEntities();
+        this.combatSystem.update(
+          dt,
+          this.playerStats.cooldownMultiplier,
+          this.playerStats.damage,
+          this.playerStats.projectileCount,
+        );
+        this.collisionSystem.update();
 
         // Send input every frame BUT only when it actually changes — keeps the
         // host's authoritative state in sync without flooding the network.
@@ -773,7 +931,7 @@ export class Game {
       ) {
         this.resumeGame();
       }
-      // Keep sending snapshots during WAVE_END/LEVEL_UP so clients see state updates
+      // Keep sending state sync during WAVE_END/LEVEL_UP so clients see state updates
       if (
         (this.state === GameState.WAVE_END ||
           this.state === GameState.LEVEL_UP) &&
@@ -781,15 +939,15 @@ export class Game {
         this.isHost
       ) {
         this.playerSnapshotTimer += dt;
-        this.worldSnapshotTimer += dt;
+        this.stateSyncTimer += dt;
 
         if (this.playerSnapshotTimer >= PLAYER_SNAPSHOT_INTERVAL) {
           this.playerSnapshotTimer = 0;
           this.broadcastPlayerSnapshot();
         }
-        if (this.worldSnapshotTimer >= WORLD_SNAPSHOT_INTERVAL) {
-          this.worldSnapshotTimer = 0;
-          this.broadcastWorldSnapshot();
+        if (this.stateSyncTimer >= STATE_SYNC_INTERVAL) {
+          this.stateSyncTimer = 0;
+          this.broadcastStateSync();
         }
       }
     }
@@ -827,12 +985,11 @@ export class Game {
     }
   }
 
-  /** Smoothly interpolate all client-side entities toward their target positions */
-  private interpolateClientEntities(dt: number): void {
-    const lerpSpeed = 24; // Higher = snappier
+  /** Interpolate other players' positions from player snapshots (client only) */
+  private interpolateRemotePlayers(dt: number): void {
+    const lerpSpeed = 24;
     const t = Math.min(1, lerpSpeed * dt);
 
-    // Interpolate other players
     for (const [, entity] of this.clientPlayerEntities) {
       if (!entity.enabled) continue;
       const tx = (entity as any).__targetX;
@@ -860,46 +1017,6 @@ export class Game {
       if (ta !== undefined) {
         const cur = entity.getEulerAngles();
         entity.setEulerAngles(0, cur.y + this.angleDiff(cur.y, ta) * t, 0);
-      }
-    }
-
-    // Interpolate entities (enemies, projectiles, pickups)
-    const pickupBob = Math.sin(this.gameTime * 4) * 0.15;
-    for (const [, entity] of this.clientEntities) {
-      const tx = (entity as any).__targetX;
-      const tz = (entity as any).__targetZ;
-      const ty = (entity as any).__targetY;
-      const etype = (entity as any).__entityType;
-      const ta = (entity as any).__targetAngle;
-      const animState = (entity as any).__animState;
-      if (tx === undefined) continue;
-
-      const pos = entity.getPosition();
-      const finalY =
-        etype === "pickup" ? (ty ?? 0.3) + pickupBob : (ty ?? pos.y);
-      entity.setPosition(
-        pos.x + (tx - pos.x) * t,
-        finalY,
-        pos.z + (tz - pos.z) * t,
-      );
-
-      if (ta !== undefined) {
-        const cur = entity.getEulerAngles();
-        entity.setEulerAngles(0, cur.y + this.angleDiff(cur.y, ta) * t, 0);
-      }
-
-      if (etype === "enemy") {
-        const modelEntity = (entity as any).__modelEntity as pc.Entity | undefined;
-        const layer = modelEntity?.anim?.baseLayer;
-        if (layer && animState && layer.activeState !== animState) {
-          layer.transition(animState, animState === "attack" ? 0.08 : 0.12);
-        }
-      }
-
-      // Spin pickups
-      if (etype === "pickup") {
-        const rot = entity.getEulerAngles();
-        entity.setEulerAngles(45, rot.y + 120 * dt, 0);
       }
     }
   }
@@ -1047,92 +1164,18 @@ export class Game {
     });
   }
 
-  private broadcastWorldSnapshot(): void {
-    const entities: EntitySnapshot[] = [];
-
-    for (const e of this.app.root.findByTag("enemy") as pc.Entity[]) {
-      let nid = this.entityNetIds.get(e);
-      if (nid === undefined) {
-        nid = allocNetId();
-        this.entityNetIds.set(e, nid);
-        this.netIdEntities.set(nid, e);
-      }
-      const ep = e.getPosition();
-      const def = (e as any).__enemyDef;
-      const health = e.script?.get("health") as any;
-      entities.push({
-        nid,
-        type: "enemy",
-        defId: def?.id || "basic",
-        x: ep.x,
-        z: ep.z,
-        angle: e.getEulerAngles().y,
-        hp: health?.hp ?? 0,
-        maxHp: health?.maxHp ?? 20,
-        scale: def?.scale ?? 0.8,
-        animState:
-          ((e as any).__modelEntity as pc.Entity | undefined)?.anim?.baseLayer
-            ?.activeState ?? "run",
-      });
-    }
-
-    for (const p of this.app.root.findByTag(
-      "player_projectile",
-    ) as pc.Entity[]) {
-      let nid = this.entityNetIds.get(p);
-      if (nid === undefined) {
-        nid = allocNetId();
-        this.entityNetIds.set(p, nid);
-        this.netIdEntities.set(nid, p);
-      }
-      const pp = p.getPosition();
-      entities.push({ nid, type: "projectile", x: pp.x, z: pp.z });
-    }
-
-    for (const pk of this.app.root.findByTag("xp_pickup") as pc.Entity[]) {
-      let nid = this.entityNetIds.get(pk);
-      if (nid === undefined) {
-        nid = allocNetId();
-        this.entityNetIds.set(pk, nid);
-        this.netIdEntities.set(nid, pk);
-      }
-      const pkp = pk.getPosition();
-      entities.push({ nid, type: "pickup", x: pkp.x, z: pkp.z });
-    }
-
-    // Area effects (shockwaves)
-    for (const ae of this.app.root.findByTag("area_effect") as pc.Entity[]) {
-      let nid = this.entityNetIds.get(ae);
-      if (nid === undefined) {
-        nid = allocNetId();
-        this.entityNetIds.set(ae, nid);
-        this.netIdEntities.set(nid, ae);
-      }
-      const aep = ae.getPosition();
-      const radius = (ae as any).__effectRadius ?? 4;
-      entities.push({
-        nid,
-        type: "area_effect",
-        x: aep.x,
-        z: aep.z,
-        scale: radius,
-      });
-    }
-
-    this.network.sendWorldSnapshot({
-      tick: Math.floor(this.gameTime * 20),
+  /** Lightweight state sync — metadata only, no entity positions */
+  private broadcastStateSync(): void {
+    this.network.sendStateSync({
       gameTime: this.gameTime,
+      state: this.state,
       wave: this.waveSystem.currentWave,
+      completedWave: this.completedWave,
+      killCount: this.killCount,
       nightFactor: (this.app as any).__nightFactor ?? 0,
       timeOfDay: (this.app as any).__timeOfDay ?? 0,
-      killCount: this.killCount,
-      completedWave: this.completedWave,
-      state: this.state,
       readyPlayers: Array.from(this.readyPlayers),
-      entities,
-      damageEvents: this.pendingDamageEvents,
     });
-    this.pendingDamageEvents = [];
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1253,19 +1296,20 @@ export class Game {
     }
   }
 
-  private applyWorldSnapshot(snap: WorldSnapshot): void {
-    this.gameTime = snap.gameTime;
-    this.killCount = snap.killCount;
-    this.waveSystem.currentWave = snap.wave;
-    this.completedWave = snap.completedWave ?? this.completedWave;
-    (this.app as any).__nightFactor = snap.nightFactor;
-    (this.app as any).__timeOfDay = snap.timeOfDay;
+  /** Client: apply lightweight state sync from host */
+  private applyStateSync(data: StateSyncEvent): void {
+    this.gameTime = data.gameTime;
+    this.killCount = data.killCount;
+    this.waveSystem.currentWave = data.wave;
+    this.completedWave = data.completedWave ?? this.completedWave;
+    (this.app as any).__nightFactor = data.nightFactor;
+    (this.app as any).__timeOfDay = data.timeOfDay;
 
     // Sync ready players list
-    this.readyPlayers = new Set(snap.readyPlayers || []);
+    this.readyPlayers = new Set(data.readyPlayers || []);
 
     // Sync game state from host (PLAYING ↔ WAVE_END ↔ LEVEL_UP transitions)
-    const hostState = snap.state as GameState;
+    const hostState = data.state as GameState;
     if (hostState && hostState !== this.state) {
       const allowed: GameState[] = [
         GameState.PLAYING,
@@ -1276,90 +1320,6 @@ export class Game {
         this.setState(hostState);
       }
     }
-
-    // Entities
-    const aliveNids = new Set<number>();
-
-    for (const eSnap of snap.entities) {
-      aliveNids.add(eSnap.nid);
-
-      let entity = this.clientEntities.get(eSnap.nid);
-      if (!entity) {
-        entity = this.createClientEntity(eSnap);
-        this.clientEntities.set(eSnap.nid, entity);
-      }
-
-      // Store target for interpolation
-      const yPos =
-        eSnap.type === "enemy"
-          ? (eSnap.scale || 0.8) / 2
-          : eSnap.type === "pickup"
-            ? 0.3
-            : eSnap.type === "area_effect"
-              ? 0.1
-              : 0.5;
-      (entity as any).__targetX = eSnap.x;
-      (entity as any).__targetZ = eSnap.z;
-      (entity as any).__targetY = yPos;
-      (entity as any).__targetAngle = eSnap.angle;
-      (entity as any).__animState = eSnap.animState;
-      (entity as any).__entityType = eSnap.type;
-      // Snap on first appearance
-      if ((entity as any).__interpReady === undefined) {
-        entity.setPosition(eSnap.x, yPos, eSnap.z);
-        if (eSnap.angle !== undefined) {
-          entity.setEulerAngles(0, eSnap.angle, 0);
-        }
-        (entity as any).__interpReady = true;
-      }
-
-      // Death animation state is driven by host animState snapshots.
-      if (eSnap.type === "enemy") {
-        const modelEntity = (entity as any).__modelEntity as pc.Entity;
-        if (modelEntity && modelEntity.anim) {
-          if (eSnap.animState === "die" && !(entity as any).__deadAnimPlayed) {
-            modelEntity.anim.baseLayer?.transition("die", 0.1);
-            (entity as any).__deadAnimPlayed = true;
-          }
-        }
-      }
-
-      // Update enemy health bar from snapshot (Disabled)
-      /*
-      if (eSnap.type === "enemy" && eSnap.hp !== undefined) {
-        const bar = (entity as any).__healthBarFg;
-        const baseScale = (entity as any).__healthBarBaseScale;
-        const maxHp = (entity as any).__maxHp || 20;
-        if (bar && baseScale) {
-          const ratio = Math.max(0, eSnap.hp / maxHp);
-          bar.setLocalScale(
-            baseScale * ratio,
-            bar.getLocalScale().y,
-            bar.getLocalScale().z,
-          );
-        }
-      }
-      */
-    }
-
-    for (const [nid, entity] of this.clientEntities) {
-      if (!aliveNids.has(nid)) {
-        entity.destroy();
-        this.clientEntities.delete(nid);
-      }
-    }
-
-    // Show floating damage numbers from host events
-    if (snap.damageEvents) {
-      for (const dmg of snap.damageEvents) {
-        this.uiManager.showDamageAtWorldPos(
-          dmg.x,
-          dmg.z,
-          dmg.damage,
-          dmg.armor,
-        );
-      }
-    }
   }
 
   private createClientPlayerEntity(
@@ -1368,224 +1328,185 @@ export class Game {
   ): pc.Entity {
     const entity = createRemotePlayerVisual(this.app, characterId);
     entity.name = `client_player_${playerId}`;
-    entity.tags.add("player");
-    entity.tags.add("remote_player");
-    (entity as any).__playerId = playerId;
-    // Register on the client's collision system so the local player is
-    // pushed back when bumping into other players' bodies.
-    this.collisionSystem.register(entity, 0.4, CollisionLayer.PLAYER);
+    entity.tags.add("player"); // So EnemyAI can target all players
     return entity;
   }
 
-  private createClientEntity(snap: EntitySnapshot): pc.Entity {
-    const entity = new pc.Entity(`net_${snap.type}_${snap.nid}`);
+  // ═══════════════════════════════════════════════════════════════════
+  //  CLIENT: EVENT-DRIVEN HANDLERS
+  // ═══════════════════════════════════════════════════════════════════
 
-    if (snap.type === "enemy") {
-      const defId = snap.defId || "basic";
-      const def = ENEMIES.find((e) => e.id === defId) || ENEMIES[0];
+  /** Client: spawn a real enemy with AI (same as host) */
+  private handleClientEnemySpawn(data: EnemySpawnEvent): void {
+    const baseDef = ENEMIES.find((e) => e.id === data.defId) || ENEMIES[0];
+    const modifiedDef = {
+      ...baseDef,
+      hp: data.hp,
+      damage: data.damage,
+      speed: data.speed,
+      scale: data.scale,
+    };
+    const entity = createEnemy(this.app, modifiedDef, new pc.Vec3(data.x, 0, data.z));
+    this.clientEntities.set(data.nid, entity);
+  }
 
-      if (def.modelPath) {
-        const url = def.modelPath;
-        const containerAsset = new pc.Asset(
-          `client_enemy_${defId}_model_${snap.nid}`,
-          "container",
-          { url },
-        );
-        this.app.assets.add(containerAsset);
+  /** Client: handle enemy death from host */
+  private handleClientEnemyDie(data: EnemyDieEvent): void {
+    const entity = this.clientEntities.get(data.nid);
+    if (!entity) return;
 
-        containerAsset.ready((asset: pc.Asset) => {
-          const resource = asset.resource as pc.ContainerResource;
-          if (!resource) return;
-          const modelEntity = resource.instantiateRenderEntity();
-          const s = def.modelScale ?? 0.01;
-          modelEntity.setLocalScale(s, s, s);
-          modelEntity.setLocalPosition(0, def.modelYOffset ?? 0, 0);
-          if (def.modelYRotation !== undefined) {
-            modelEntity.setLocalEulerAngles(0, def.modelYRotation, 0);
-          }
-          entity.addChild(modelEntity);
+    // Mark as dead so auto-aim and AI skip this enemy
+    (entity as any).__deathProcessed = true;
 
-          // Simple animation setup for client
-          const anims = (containerAsset.resource as any)?.animations as
-            | pc.Asset[]
-            | undefined;
-          if (anims && anims.length > 0) {
-            let runTrack: pc.AnimTrack | null = null;
-            for (const a of anims) {
-              const track = a.resource as pc.AnimTrack;
-              if (track && track.name.toLowerCase().includes("run"))
-                runTrack = track;
-            }
-            if (!runTrack) runTrack = anims[0].resource as pc.AnimTrack;
+    this.audioManager.playSfx("enemyDeath");
 
-            modelEntity.addComponent("anim", { activate: true, speed: 1 });
-            const anim = modelEntity.anim!;
-            anim.loadStateGraph(
-              new pc.AnimStateGraph({
-                layers: [
-                  {
-                    name: "Base",
-                    states: [
-                      { name: "START", speed: 1 },
-                      { name: "run", speed: 1, loop: true },
-                      { name: "attack", speed: 1, loop: false },
-                      { name: "die", speed: 1, loop: false },
-                    ],
-                    transitions: [
-                      { from: "START", to: "run", time: 0, conditions: [] },
-                    ],
-                  },
-                ],
-                parameters: {},
-              }),
-            );
-            anim.assignAnimation("run", runTrack);
+    // Disable AI so it stops moving
+    const ai = entity.script?.get("enemyAI");
+    if (ai instanceof EnemyAI) ai.enabled = false;
+    this.collisionSystem.unregister(entity);
 
-            let attackTrack: pc.AnimTrack | null = null;
-            let dieTrack: pc.AnimTrack | null = null;
-            for (const a of anims) {
-              const track = a.resource as pc.AnimTrack;
-              if (track) {
-                const name = track.name.toLowerCase();
-                if (name.includes("attack") || name.includes("punch"))
-                  attackTrack = track;
-                if (name.includes("death") || name.includes("die"))
-                  dieTrack = track;
-              }
-            }
-            if (attackTrack) anim.assignAnimation("attack", attackTrack);
-            if (dieTrack) anim.assignAnimation("die", dieTrack);
-
-            (entity as any).__modelEntity = modelEntity;
-            (entity as any).__hasAnims = true;
-          }
-        });
-        this.app.assets.load(containerAsset);
-
-        const s = snap.scale || 0.8;
-        entity.setLocalScale(s, s, s);
-        entity.setPosition(snap.x, 0, snap.z);
-      } else {
-        entity.addComponent("render", { type: "box" });
-        const mat = new pc.StandardMaterial();
-        mat.diffuse = def.color || new pc.Color(0.8, 0.2, 0.3);
-        mat.update();
-        for (const mi of entity.render!.meshInstances) mi.material = mat;
-        const s = snap.scale || 0.8;
-        entity.setLocalScale(s, s, s);
-        entity.setPosition(snap.x, s / 2, snap.z);
-      }
-
-      // Health bar (same as EnemyFactory) - Disabled
-      /*
-      const s = snap.scale || 0.8;
-      const barWidth = 1.0;
-      const barHeight = 0.06;
-      const barY = def.modelPath
-        ? (s * 0.5 + 0.2) / s + 2
-        : (s * 0.5 + 0.2) / s;
-
-      const barBg = new pc.Entity("hpbar_bg");
-      barBg.addComponent("render", { type: "box" });
-      const bgMat = new pc.StandardMaterial();
-      bgMat.diffuse = new pc.Color(0.08, 0.08, 0.08);
-      bgMat.update();
-      for (const mi of barBg.render!.meshInstances) mi.material = bgMat;
-      barBg.setLocalScale(
-        (barWidth + 0.06) / s,
-        barHeight / s,
-        (barHeight + 0.02) / s,
-      );
-      barBg.setLocalPosition(0, barY, 0);
-      entity.addChild(barBg);
-
-      const barFg = new pc.Entity("hpbar_fg");
-      barFg.addComponent("render", { type: "box" });
-      const fgMat = new pc.StandardMaterial();
-      fgMat.diffuse = new pc.Color(0.85, 0.12, 0.12);
-      fgMat.emissive = new pc.Color(0.5, 0.05, 0.05);
-      fgMat.emissiveIntensity = 1.5;
-      fgMat.update();
-      for (const mi of barFg.render!.meshInstances) mi.material = fgMat;
-      barFg.setLocalScale(barWidth / s, barHeight / s, barHeight / s);
-      barFg.setLocalPosition(0, barY, 0);
-      entity.addChild(barFg);
-
-      (entity as any).__healthBarFg = barFg;
-      (entity as any).__healthBarBaseScale = barWidth / s;
-      (entity as any).__maxHp = snap.maxHp || 20;
-      */
-    } else if (snap.type === "projectile") {
-      entity.addComponent("render", { type: "sphere" });
-      const mat = new pc.StandardMaterial();
-      mat.diffuse = new pc.Color(1, 1, 0.3);
-      mat.emissive = new pc.Color(0.8, 0.8, 0.2);
-      mat.emissiveIntensity = 2;
-      mat.update();
-      for (const mi of entity.render!.meshInstances) mi.material = mat;
-      entity.setLocalScale(0.3, 0.3, 0.3);
-      entity.setPosition(snap.x, 0.5, snap.z);
-    } else if (snap.type === "pickup") {
-      entity.addComponent("render", { type: "box" });
-      const mat = new pc.StandardMaterial();
-      mat.diffuse = new pc.Color(0.2, 1, 0.3);
-      mat.emissive = new pc.Color(0.1, 0.8, 0.2);
-      mat.emissiveIntensity = 2;
-      mat.update();
-      for (const mi of entity.render!.meshInstances) mi.material = mat;
-      entity.setLocalScale(0.3, 0.3, 0.3);
-      entity.setEulerAngles(45, 45, 0);
-      entity.setPosition(snap.x, 0.3, snap.z);
-    } else if (snap.type === "area_effect") {
-      // Use the animated explosion model when available (synced with host visuals)
-      const explosionAsset = getCachedModel("assets/explosion/explosion.glb");
-      if (explosionAsset) {
-        const container = explosionAsset.resource as any;
-        const visual = container.instantiateRenderEntity() as pc.Entity;
-        const radius = snap.scale || 4;
-        const modelScale = radius / 60;
-        visual.setLocalScale(modelScale, modelScale, modelScale);
-        visual.setLocalPosition(0, 0, 16 * modelScale);
-        entity.addChild(visual);
-        const anims = (container as any).animations as pc.Asset[] | undefined;
-        if (anims && anims.length > 0) {
-          visual.addComponent("anim", { activate: true, speed: 1 });
-          const track = anims[0].resource as pc.AnimTrack;
-          if (track) {
-            visual.anim!.loadStateGraph(new pc.AnimStateGraph({
-              layers: [{
-                name: "Base",
-                states: [
-                  { name: "START", speed: 1 },
-                  { name: "play", speed: 1, loop: false },
-                ],
-                transitions: [{ from: "START", to: "play", time: 0, conditions: [] }],
-              }],
-              parameters: {},
-            }));
-            visual.anim!.assignAnimation("play", track);
-          }
-        }
-        entity.setPosition(snap.x, 0.1, snap.z);
-      } else {
-        // Fallback cylinder
-        entity.addComponent("render", { type: "cylinder" });
-        const mat = new pc.StandardMaterial();
-        mat.diffuse = new pc.Color(1, 0.5, 0.2);
-        mat.emissive = new pc.Color(1, 0.3, 0.1);
-        mat.emissiveIntensity = 3;
-        mat.opacity = 0.5;
-        mat.blendType = pc.BLEND_ADDITIVE;
-        mat.update();
-        for (const mi of entity.render!.meshInstances) mi.material = mat;
-        const s = snap.scale || 8;
-        entity.setLocalScale(s, 0.2, s);
-        entity.setPosition(snap.x, 0.1, snap.z);
-      }
+    // Play death animation
+    const modelEntity = (entity as any).__modelEntity as pc.Entity | undefined;
+    if (modelEntity?.anim?.baseLayer) {
+      modelEntity.anim.baseLayer.transition("die", 0.1);
     }
 
-    this.app.root.addChild(entity);
-    return entity;
+    this.clientEntities.delete(data.nid);
+    const hasAnims = (entity as any).__hasAnims;
+    setTimeout(() => { if (entity.parent) entity.destroy(); }, hasAnims ? 2000 : 50);
+  }
+
+  /** Client: create a projectile fired by another player */
+  private handleClientProjectileFire(data: ProjectileFireEvent): void {
+    // Skip projectiles from self — client fires own weapons locally
+    if (data.playerId === this.network.myId) return;
+
+    const pos = new pc.Vec3(data.x, 0.5, data.z);
+    const dir = new pc.Vec3(data.dirX, 0, data.dirZ);
+    createProjectile(
+      this.app, pos, dir,
+      data.speed, data.lifetime, data.damage,
+      undefined, data.isEnemy,
+      data.modelPath, data.modelScale,
+      data.text,
+    );
+  }
+
+  /** Client: spawn a real pickup with magnet behavior */
+  private handleClientPickupSpawn(data: PickupSpawnEvent): void {
+    const entity = createXPPickup(this.app, new pc.Vec3(data.x, 0.5, data.z), data.xpValue);
+    this.clientEntities.set(data.nid, entity);
+  }
+
+  /** Client: destroy a collected pickup */
+  private handleClientPickupCollected(data: PickupCollectedEvent): void {
+    const entity = this.clientEntities.get(data.nid);
+    if (entity) {
+      this.audioManager.playSfx("xpPickup");
+      this.collisionSystem.unregister(entity);
+      entity.destroy();
+      this.clientEntities.delete(data.nid);
+    }
+  }
+
+  /** Client: show area effect visual (mirrors CombatSystem.fireArea visuals) */
+  private handleClientAreaEffect(data: AreaEffectEvent): void {
+    const radius = data.radius;
+    const area = new pc.Entity("area_effect");
+    area.setPosition(data.x, 0.1, data.z);
+    area.tags.add("area_effect");
+    this.app.root.addChild(area);
+
+    // Use the explosion GLB model (same as host/solo)
+    const explosionAsset = getCachedModel("assets/explosion/explosion.glb");
+    let visualLifetime = 300;
+
+    if (explosionAsset) {
+      const container = explosionAsset.resource as any;
+      const visual = container.instantiateRenderEntity() as pc.Entity;
+      const modelScale = radius / 60;
+      visual.setLocalScale(modelScale, modelScale, modelScale);
+      visual.setLocalPosition(0, 0, 16 * modelScale);
+      area.addChild(visual);
+
+      const anims = (container as any).animations as pc.Asset[] | undefined;
+      if (anims && anims.length > 0) {
+        visual.addComponent("anim", { activate: true, speed: 1 });
+        const track = anims[0].resource as pc.AnimTrack;
+        if (track) {
+          visual.anim!.loadStateGraph(
+            new pc.AnimStateGraph({
+              layers: [
+                {
+                  name: "Base",
+                  states: [
+                    { name: "START", speed: 1 },
+                    { name: "play", speed: 1, loop: false },
+                  ],
+                  transitions: [
+                    { from: "START", to: "play", time: 0, conditions: [] },
+                  ],
+                },
+              ],
+              parameters: {},
+            }),
+          );
+          visual.anim!.assignAnimation("play", track);
+          visualLifetime = Math.min(
+            2000,
+            Math.max(800, (track.duration || 1) * 1000),
+          );
+        }
+      }
+    } else {
+      // Fallback: glowing cylinder
+      area.addComponent("render", { type: "cylinder" });
+      area.setLocalScale(radius * 2, 0.2, radius * 2);
+      const mat = new pc.StandardMaterial();
+      mat.diffuse = new pc.Color(1, 0.5, 0.2);
+      mat.emissive = new pc.Color(1, 0.3, 0.1);
+      mat.emissiveIntensity = 3;
+      mat.opacity = 0.5;
+      mat.blendType = pc.BLEND_ADDITIVE;
+      mat.update();
+      for (const mi of area.render!.meshInstances) mi.material = mat;
+    }
+
+    setTimeout(() => {
+      if (area.parent) area.destroy();
+    }, visualLifetime);
+  }
+
+  /** Client: show wall effect visual (mirrors CombatSystem.fireWall visuals) */
+  private handleClientWallEffect(data: WallEffectEvent): void {
+    const wall = new pc.Entity("wall");
+    wall.setPosition(data.x, 0, data.z);
+    const yaw = Math.atan2(data.dirX, data.dirZ) * (180 / Math.PI);
+    wall.setLocalEulerAngles(0, yaw + 90, 0);
+
+    // Use the wall GLB model (same as host/solo)
+    const wallAsset = getCachedModel("assets/wall/wall.glb");
+    if (wallAsset) {
+      const container = wallAsset.resource as any;
+      const visual = container.instantiateRenderEntity() as pc.Entity;
+      const scaleX = (data.halfWidth * 2) / 3.3;
+      visual.setLocalScale(scaleX, 1.5, 1);
+      wall.addChild(visual);
+    } else {
+      // Fallback box
+      wall.addComponent("render", { type: "box" });
+      wall.setLocalScale(data.halfWidth * 2, 1.5, 1);
+      const mat = new pc.StandardMaterial();
+      mat.diffuse = new pc.Color(0.45, 0.30, 0.15);
+      mat.update();
+      for (const mi of wall.render!.meshInstances) mi.material = mat;
+    }
+
+    wall.tags.add("wall_effect");
+    this.app.root.addChild(wall);
+    setTimeout(() => {
+      if (wall.parent) wall.destroy();
+    }, (data.lifetime || 2) * 1000);
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1669,6 +1590,12 @@ export class Game {
         CollisionLayer.PLAYER,
       );
       this.syncStatsToEntity();
+      // Reset Health script's isDead flag so the player can take damage again
+      const health = this.playerEntity.script?.get("health") as any;
+      if (health) {
+        health.isDead = false;
+        health.hp = this.playerStats.maxHp;
+      }
       this.restoreCameraToSelf();
     }
 
@@ -1786,58 +1713,36 @@ export class Game {
     layerA: CollisionLayer,
     layerB: CollisionLayer,
   ): void {
-    // Player-vs-player body push runs on both host and client so the
-    // collision feels responsive locally; the host is still authoritative
-    // and will broadcast the corrected positions via snapshot.
-    if (
-      layerA === CollisionLayer.PLAYER &&
-      layerB === CollisionLayer.PLAYER &&
-      a !== b
-    ) {
-      const pa = a.getPosition();
-      const pb = b.getPosition();
-      const dx = pa.x - pb.x;
-      const dz = pa.z - pb.z;
-      const distSq = dx * dx + dz * dz;
-      const minDist = 0.8;
-      if (distSq > 0.0001 && distSq < minDist * minDist) {
-        const dist = Math.sqrt(distSq);
-        const overlap = minDist - dist;
-        const nx = dx / dist;
-        const nz = dz / dist;
-        const push = overlap * 0.5;
-        a.setPosition(pa.x + nx * push, pa.y, pa.z + nz * push);
-        b.setPosition(pb.x - nx * push, pb.y, pb.z - nz * push);
-      }
-      return;
-    }
-
-    if (this.isClient) return;
-
     // Projectile hits enemy
     if (
       layerA === CollisionLayer.PLAYER_PROJECTILE &&
       layerB === CollisionLayer.ENEMY
     ) {
-      const projScript = a.script?.get("projectile") as any;
-      const healthScript = b.script?.get("health") as any;
-      if (projScript && healthScript) {
-        // Tag the enemy with the last attacker for kill attribution
-        const ownerId = (a as any).__ownerId;
-        if (ownerId) (b as any).__lastAttacker = ownerId;
-        healthScript.takeDamage(projScript.damage, false);
-        this.collisionSystem.unregister(a);
-        const nid = this.entityNetIds.get(a);
-        if (nid !== undefined) {
-          this.entityNetIds.delete(a);
-          this.netIdEntities.delete(nid);
+      if (this.isHost) {
+        // Host: full damage logic
+        const projScript = a.script?.get("projectile") as any;
+        const healthScript = b.script?.get("health") as any;
+        if (projScript && healthScript) {
+          const ownerId = (a as any).__ownerId;
+          if (ownerId) (b as any).__lastAttacker = ownerId;
+          healthScript.takeDamage(projScript.damage, false);
         }
-        a.destroy();
       }
+      // Both host and client: destroy the projectile visually
+      this.collisionSystem.unregister(a);
+      const nid = this.entityNetIds.get(a);
+      if (nid !== undefined) {
+        this.entityNetIds.delete(a);
+        this.netIdEntities.delete(nid);
+      }
+      a.destroy();
+      return;
     }
 
-    // Enemy touches player
+    // Enemy touches player — only host applies damage
     if (layerA === CollisionLayer.ENEMY && layerB === CollisionLayer.PLAYER) {
+      if (this.isClient) return; // Client: no damage, host handles via HP sync
+
       const enemyAI = a.script?.get("enemyAI");
       if (!(enemyAI instanceof EnemyAI) || !enemyAI.canDealContactDamage())
         return;
@@ -1891,12 +1796,24 @@ export class Game {
 
     // XP pickup — ALL XP goes to the shared global pool
     if (layerA === CollisionLayer.PICKUP && layerB === CollisionLayer.PLAYER) {
+      if (this.isClient) {
+        // Client: destroy pickup visually + play SFX, host handles XP
+        this.audioManager.playSfx("xpPickup");
+        this.collisionSystem.unregister(a);
+        const nid = this.findClientNid(a);
+        if (nid !== undefined) this.clientEntities.delete(nid);
+        a.destroy();
+        return;
+      }
       const xpScript = a.script?.get("xpPickup") as XPPickup | undefined;
       if (xpScript) {
         this.app.fire("xp:collected", xpScript.xpValue);
         this.collisionSystem.unregister(a);
         const nid = this.entityNetIds.get(a);
         if (nid !== undefined) {
+          if (this.isMultiplayerGame) {
+            this.network.sendPickupCollected({ nid });
+          }
           this.entityNetIds.delete(a);
           this.netIdEntities.delete(nid);
         }
@@ -1904,39 +1821,50 @@ export class Game {
       }
     }
 
-    // Enemy projectile hits the local player
+    // Enemy projectile hits player
     if (
       layerA === CollisionLayer.ENEMY_PROJECTILE &&
       layerB === CollisionLayer.PLAYER
     ) {
-      const projScript = a.script?.get("projectile") as any;
-      if (!projScript) return;
-      let damage = projScript.damage as number;
+      if (this.isHost) {
+        // Host: full damage logic
+        const projScript = a.script?.get("projectile") as any;
+        if (!projScript) return;
+        let damage = projScript.damage as number;
 
-      if (b === this.playerEntity) {
-        let armorHit = false;
-        if (this.playerStats.armor > 0) {
-          armorHit = true;
-          if (this.playerStats.armor >= damage) {
-            this.playerStats.armor -= damage;
-            this.app.fire("damage:dealt", b, damage, true);
-            this.collisionSystem.unregister(a);
-            a.destroy();
-            return;
+        if (b === this.playerEntity) {
+          let armorHit = false;
+          if (this.playerStats.armor > 0) {
+            armorHit = true;
+            if (this.playerStats.armor >= damage) {
+              this.playerStats.armor -= damage;
+              this.app.fire("damage:dealt", b, damage, true);
+              this.collisionSystem.unregister(a);
+              a.destroy();
+              return;
+            }
+            damage -= this.playerStats.armor;
+            this.playerStats.armor = 0;
           }
-          damage -= this.playerStats.armor;
-          this.playerStats.armor = 0;
-        }
-        const playerHealth = b.script?.get("health") as Health | undefined;
-        if (playerHealth) {
-          playerHealth.takeDamage(damage, armorHit);
-          this.playerStats.hp = playerHealth.hp;
+          const playerHealth = b.script?.get("health") as Health | undefined;
+          if (playerHealth) {
+            playerHealth.takeDamage(damage, armorHit);
+            this.playerStats.hp = playerHealth.hp;
+          }
         }
       }
-
+      // Both host and client: destroy the projectile visually
       this.collisionSystem.unregister(a);
       a.destroy();
     }
+  }
+
+  /** Find a client entity's nid by entity reference */
+  private findClientNid(entity: pc.Entity): number | undefined {
+    for (const [nid, e] of this.clientEntities) {
+      if (e === entity) return nid;
+    }
+    return undefined;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1956,7 +1884,7 @@ export class Game {
     this.clientXpProgress = 0;
     this.clientGold = 0;
     this.playerSnapshotTimer = 0;
-    this.worldSnapshotTimer = 0;
+    this.stateSyncTimer = 0;
     nextNetId = 1;
 
     for (const e of this.app.root.findByTag("enemy")) e.destroy();

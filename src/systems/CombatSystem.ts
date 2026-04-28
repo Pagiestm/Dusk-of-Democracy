@@ -127,6 +127,8 @@ export class CombatSystem {
 
         for (const e of enemies) {
             if (!e.enabled) continue;
+            // Skip enemies in death animation
+            if ((e as any).__deathProcessed) continue;
             const ep = e.getPosition();
             const dx = ep.x - myPos.x;
             const dz = ep.z - myPos.z;
@@ -235,12 +237,20 @@ export class CombatSystem {
 
         wall.tags.add('wall_effect');
         this.app.root.addChild(wall);
+
+        // Fire event so host can relay to clients
+        this.app.fire('wallEffect:fired', wallX, wallZ, dirX, dirZ, halfWidth, damage, def.projectileLifetime);
     }
 
-    private tagProjectile(proj: pc.Entity): void {
+    private tagProjectile(proj: pc.Entity, dirX: number, dirZ: number, speed: number, lifetime: number, damage: number, isEnemy: boolean, modelPath?: string, modelScale?: number, text?: string): void {
         if (this.currentOwnerId) {
             (proj as any).__ownerId = this.currentOwnerId;
         }
+        // Fire event so host can relay to clients (grouped to stay within app.fire arg limit)
+        this.app.fire('projectile:fired', proj, {
+            ownerId: this.currentOwnerId,
+            dirX, dirZ, speed, lifetime, damage, isEnemy, modelPath, modelScale, text,
+        });
     }
 
     private pickRandomText(def: WeaponDef): string | undefined {
@@ -260,8 +270,9 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale, this.pickRandomText(def));
-            this.tagProjectile(proj);
+            const text = this.pickRandomText(def);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale, text);
+            this.tagProjectile(proj, dirX, dirZ, def.projectileSpeed, def.projectileLifetime, damage, false, def.projectileModelPath, def.projectileModelScale, text);
         }
     }
 
@@ -278,8 +289,9 @@ export class CombatSystem {
             const dirX = aimX * cos - aimZ * sin;
             const dirZ = aimX * sin + aimZ * cos;
 
-            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale, this.pickRandomText(def));
-            this.tagProjectile(proj);
+            const text = this.pickRandomText(def);
+            const proj = createProjectile(this.app, pos, new pc.Vec3(dirX, 0, dirZ), def.projectileSpeed, def.projectileLifetime, damage, undefined, false, def.projectileModelPath, def.projectileModelScale, text);
+            this.tagProjectile(proj, dirX, dirZ, def.projectileSpeed, def.projectileLifetime, damage, false, def.projectileModelPath, def.projectileModelScale, text);
         }
     }
 
@@ -342,9 +354,11 @@ export class CombatSystem {
             for (const mi of area.render!.meshInstances) mi.material = mat;
         }
 
-        // Damage all enemies in radius once
-        const enemies = this.app.root.findByTag('enemy') as pc.Entity[];
-        for (const enemy of enemies) {
+        // Damage all enemies in radius once (host only — clients get death via events)
+        const game = (this.app as any).__game;
+        if (!game || game.isHost) {
+          const enemies = this.app.root.findByTag('enemy') as pc.Entity[];
+          for (const enemy of enemies) {
             const enemyPos = enemy.getPosition();
             const dx = enemyPos.x - pos.x;
             const dz = enemyPos.z - pos.z;
@@ -352,9 +366,13 @@ export class CombatSystem {
                 const health = (enemy as pc.Entity).script?.get('health') as any;
                 if (health) health.takeDamage(damage);
             }
+          }
         }
 
         setTimeout(() => { if (area.parent) area.destroy(); }, visualLifetime);
+
+        // Fire event so host can relay to clients
+        this.app.fire('areaEffect:fired', pos.x, pos.z, radius);
     }
 
     clear(): void {

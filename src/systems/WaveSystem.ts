@@ -157,8 +157,11 @@ export class WaveSystem {
             speed:  def.speed * speedMult,
         };
 
-        createEnemy(this.app, modifiedDef, new pc.Vec3(x, 0, z));
+        const entity = createEnemy(this.app, modifiedDef, new pc.Vec3(x, 0, z));
         this.totalEnemiesAlive++;
+
+        // Fire event so the host can relay spawn info to clients
+        this.app.fire('enemy:spawned', entity, modifiedDef, x, z);
     }
 
     reset(): void {

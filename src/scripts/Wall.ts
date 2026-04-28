@@ -26,7 +26,9 @@ export class Wall extends pc.Script {
             return;
         }
 
-        // Damage enemies inside the wall's oriented bounding box
+        // Damage enemies inside the wall's oriented bounding box (host only)
+        if (game && game.isClient) return;
+
         const wallPos = this.entity.getPosition();
         const wallRot = this.entity.getRotation();
         const inv = wallRot.clone().invert();

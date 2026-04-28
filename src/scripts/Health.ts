@@ -8,7 +8,7 @@ export class Health extends pc.Script {
   hp: number = 100;
   private invulnTimer: number = 0;
   invulnDuration: number = 0; // seconds of invulnerability after hit (0 = none)
-  private isDead: boolean = false;
+  isDead: boolean = false;
 
   initialize(): void {
     this.hp = this.maxHp;

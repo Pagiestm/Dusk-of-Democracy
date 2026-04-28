@@ -16,7 +16,9 @@ export class XPSystem {
         // When enemy dies, spawn XP pickup at their position
         this.app.on('enemy:died', (entity: pc.Entity, xpReward: number) => {
             const pos = entity.getPosition();
-            createXPPickup(this.app, pos.clone(), xpReward);
+            const pickupEntity = createXPPickup(this.app, pos.clone(), xpReward);
+            // Fire event so the host can relay pickup spawn to clients
+            this.app.fire('pickup:spawned', pickupEntity, xpReward, pos.x, pos.z);
         });
 
         // When XP pickup is collected

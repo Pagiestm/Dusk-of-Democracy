@@ -3,14 +3,20 @@ import type { RoomManager } from '../rooms/RoomManager.js';
 
 export function registerGameHandlers(io: Server, socket: Socket, roomManager: RoomManager): void {
     let playerSnapRelayCount = 0;
-    let worldSnapRelayCount = 0;
+
+    /** Helper: validate sender is host of an active game room */
+    function getHostRoom() {
+        const room = roomManager.getRoomBySocket(socket);
+        if (!room || room.status !== 'playing') return null;
+        if (room.hostId !== socket.id) return null;
+        return room;
+    }
 
     // ── Player snapshot relay (host → clients) ──
 
     socket.on('game:players', (snapshot: unknown) => {
-        const room = roomManager.getRoomBySocket(socket);
-        if (!room || room.status !== 'playing') return;
-        if (room.hostId !== socket.id) return;
+        const room = getHostRoom();
+        if (!room) return;
 
         playerSnapRelayCount++;
         if (playerSnapRelayCount <= 3 || playerSnapRelayCount % 300 === 0) {
@@ -19,19 +25,27 @@ export function registerGameHandlers(io: Server, socket: Socket, roomManager: Ro
         socket.to(room.id).emit('game:players', snapshot);
     });
 
-    // ── World snapshot relay (host → clients) ──
+    // ── Event-driven game events (host → clients) ──
 
-    socket.on('game:world', (snapshot: unknown) => {
-        const room = roomManager.getRoomBySocket(socket);
-        if (!room || room.status !== 'playing') return;
-        if (room.hostId !== socket.id) return;
+    const hostRelayEvents = [
+        'game:enemySpawn',
+        'game:enemyDie',
+        'game:projectileFire',
+        'game:pickupSpawn',
+        'game:pickupCollected',
+        'game:areaEffect',
+        'game:wallEffect',
+        'game:stateSync',
+        'game:damageEvent',
+    ];
 
-        worldSnapRelayCount++;
-        if (worldSnapRelayCount <= 3 || worldSnapRelayCount % 200 === 0) {
-            console.log(`[Relay] World snapshot #${worldSnapRelayCount} → room ${room.code} (${room.players.size} players)`);
-        }
-        socket.to(room.id).emit('game:world', snapshot);
-    });
+    for (const eventName of hostRelayEvents) {
+        socket.on(eventName, (data: unknown) => {
+            const room = getHostRoom();
+            if (!room) return;
+            socket.to(room.id).emit(eventName, data);
+        });
+    }
 
     // ── Input relay (client → host) ──
 

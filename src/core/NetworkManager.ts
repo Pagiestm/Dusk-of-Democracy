@@ -12,19 +12,6 @@ export interface RoomPlayer {
     isReady: boolean;
 }
 
-export interface EntitySnapshot {
-    nid: number;
-    type: string;       // 'enemy' | 'projectile' | 'pickup' | 'area_effect'
-    defId?: string;
-    x: number;
-    z: number;
-    hp?: number;
-    maxHp?: number;
-    angle?: number;
-    scale?: number;
-    animState?: string;
-}
-
 export interface PlayerNetState {
     id: string;         // socket.id
     characterId: string;
@@ -55,6 +42,99 @@ export interface PlayerSnapshot {
     tick: number;
     gameTime: number;
     players: PlayerNetState[];
+}
+
+// ─── Event-Driven Types (replace WorldSnapshot) ─────────────────────
+
+export interface EnemySpawnEvent {
+    nid: number;
+    defId: string;
+    x: number;
+    z: number;
+    hp: number;
+    damage: number;
+    speed: number;
+    scale: number;
+}
+
+export interface EnemyDieEvent {
+    nid: number;
+}
+
+export interface ProjectileFireEvent {
+    nid: number;
+    playerId: string;
+    x: number;
+    z: number;
+    dirX: number;
+    dirZ: number;
+    speed: number;
+    lifetime: number;
+    damage: number;
+    isEnemy: boolean;
+    modelPath?: string;
+    modelScale?: number;
+    text?: string;
+}
+
+export interface PickupSpawnEvent {
+    nid: number;
+    x: number;
+    z: number;
+    xpValue: number;
+}
+
+export interface PickupCollectedEvent {
+    nid: number;
+}
+
+export interface AreaEffectEvent {
+    x: number;
+    z: number;
+    radius: number;
+}
+
+export interface WallEffectEvent {
+    x: number;
+    z: number;
+    dirX: number;
+    dirZ: number;
+    halfWidth: number;
+    damage: number;
+    lifetime: number;
+}
+
+export interface StateSyncEvent {
+    gameTime: number;
+    state: string;
+    wave: number;
+    completedWave: number;
+    killCount: number;
+    nightFactor: number;
+    timeOfDay: number;
+    readyPlayers: string[];
+}
+
+export interface DamageEventNet {
+    x: number;
+    z: number;
+    damage: number;
+    armor: boolean;
+}
+
+// ─── Legacy types (kept for backward compat during transition) ──────
+
+export interface EntitySnapshot {
+    nid: number;
+    type: string;
+    defId?: string;
+    x: number;
+    z: number;
+    hp?: number;
+    maxHp?: number;
+    angle?: number;
+    scale?: number;
+    animState?: string;
 }
 
 export interface WorldSnapshot {
@@ -90,7 +170,6 @@ export class NetworkManager {
     onStartSelection: (() => void) | null = null;
     onGameStart: ((players: RoomPlayer[]) => void) | null = null;
     onPlayerSnapshot: ((snap: PlayerSnapshot) => void) | null = null;
-    onWorldSnapshot: ((snap: WorldSnapshot) => void) | null = null;
     onRemoteInput: ((data: { playerId: string; moveX: number; moveZ: number; aimX: number; aimZ: number; fire: boolean }) => void) | null = null;
     onError: ((msg: string) => void) | null = null;
     onGameOver: (() => void) | null = null;
@@ -99,6 +178,17 @@ export class NetworkManager {
     onRemoteBuyItem: ((data: { playerId: string; itemId: string }) => void) | null = null;
     onRemotePlayerReady: ((data: { playerId: string }) => void) | null = null;
     onRemoteSelectUpgrade: ((data: { playerId: string; upgradeId: string }) => void) | null = null;
+
+    // Event-driven callbacks (new system)
+    onEnemySpawn: ((data: EnemySpawnEvent) => void) | null = null;
+    onEnemyDie: ((data: EnemyDieEvent) => void) | null = null;
+    onProjectileFire: ((data: ProjectileFireEvent) => void) | null = null;
+    onPickupSpawn: ((data: PickupSpawnEvent) => void) | null = null;
+    onPickupCollected: ((data: PickupCollectedEvent) => void) | null = null;
+    onAreaEffect: ((data: AreaEffectEvent) => void) | null = null;
+    onWallEffect: ((data: WallEffectEvent) => void) | null = null;
+    onStateSync: ((data: StateSyncEvent) => void) | null = null;
+    onDamageEvent: ((data: DamageEventNet) => void) | null = null;
 
     // ─── Connection ──────────────────────────────────────────────
 
@@ -110,7 +200,7 @@ export class NetworkManager {
         this.playerName = name;
         this.socket = io(SERVER_URL, {
             auth: { name },
-            transports: ['websocket'],  // Skip long-polling, connect via WebSocket directly
+            transports: ['websocket'],
         });
 
         this.socket.on('connect', () => {
@@ -174,7 +264,7 @@ export class NetworkManager {
             this.onGameStart?.(data.players);
         });
 
-        // ── In-Game ──
+        // ── In-Game: Player snapshot ──
 
         let playerSnapCount = 0;
         this.socket.on('game:players', (snap: PlayerSnapshot) => {
@@ -183,15 +273,6 @@ export class NetworkManager {
                 console.log(`[Net] Player snapshot #${playerSnapCount} received: ${snap.players.length} players`);
             }
             this.onPlayerSnapshot?.(snap);
-        });
-
-        let worldSnapCount = 0;
-        this.socket.on('game:world', (snap: WorldSnapshot) => {
-            worldSnapCount++;
-            if (worldSnapCount <= 3 || worldSnapCount % 100 === 0) {
-                console.log(`[Net] World snapshot #${worldSnapCount} received: ${snap.entities.length} entities`);
-            }
-            this.onWorldSnapshot?.(snap);
         });
 
         this.socket.on('game:remoteInput', (data) => {
@@ -221,6 +302,44 @@ export class NetworkManager {
 
         this.socket.on('game:remoteSelectUpgrade', (data) => {
             this.onRemoteSelectUpgrade?.(data);
+        });
+
+        // ── In-Game: Event-driven sync (new system) ──
+
+        this.socket.on('game:enemySpawn', (data: EnemySpawnEvent) => {
+            this.onEnemySpawn?.(data);
+        });
+
+        this.socket.on('game:enemyDie', (data: EnemyDieEvent) => {
+            this.onEnemyDie?.(data);
+        });
+
+        this.socket.on('game:projectileFire', (data: ProjectileFireEvent) => {
+            this.onProjectileFire?.(data);
+        });
+
+        this.socket.on('game:pickupSpawn', (data: PickupSpawnEvent) => {
+            this.onPickupSpawn?.(data);
+        });
+
+        this.socket.on('game:pickupCollected', (data: PickupCollectedEvent) => {
+            this.onPickupCollected?.(data);
+        });
+
+        this.socket.on('game:areaEffect', (data: AreaEffectEvent) => {
+            this.onAreaEffect?.(data);
+        });
+
+        this.socket.on('game:wallEffect', (data: WallEffectEvent) => {
+            this.onWallEffect?.(data);
+        });
+
+        this.socket.on('game:stateSync', (data: StateSyncEvent) => {
+            this.onStateSync?.(data);
+        });
+
+        this.socket.on('game:damageEvent', (data: DamageEventNet) => {
+            this.onDamageEvent?.(data);
         });
     }
 
@@ -270,10 +389,6 @@ export class NetworkManager {
         this.socket?.emit('game:players', snap);
     }
 
-    sendWorldSnapshot(snap: WorldSnapshot): void {
-        this.socket?.emit('game:world', snap);
-    }
-
     sendInput(data: { moveX: number; moveZ: number; aimX: number; aimZ: number; fire: boolean }): void {
         this.socket?.emit('game:input', data);
     }
@@ -300,5 +415,43 @@ export class NetworkManager {
 
     sendPlayerReady(): void {
         this.socket?.emit('game:playerReady');
+    }
+
+    // ─── Event-driven sync (host → clients) ─────────────────────
+
+    sendEnemySpawn(data: EnemySpawnEvent): void {
+        this.socket?.emit('game:enemySpawn', data);
+    }
+
+    sendEnemyDie(data: EnemyDieEvent): void {
+        this.socket?.emit('game:enemyDie', data);
+    }
+
+    sendProjectileFire(data: ProjectileFireEvent): void {
+        this.socket?.emit('game:projectileFire', data);
+    }
+
+    sendPickupSpawn(data: PickupSpawnEvent): void {
+        this.socket?.emit('game:pickupSpawn', data);
+    }
+
+    sendPickupCollected(data: PickupCollectedEvent): void {
+        this.socket?.emit('game:pickupCollected', data);
+    }
+
+    sendAreaEffect(data: AreaEffectEvent): void {
+        this.socket?.emit('game:areaEffect', data);
+    }
+
+    sendWallEffect(data: WallEffectEvent): void {
+        this.socket?.emit('game:wallEffect', data);
+    }
+
+    sendStateSync(data: StateSyncEvent): void {
+        this.socket?.emit('game:stateSync', data);
+    }
+
+    sendDamageEvent(data: DamageEventNet): void {
+        this.socket?.emit('game:damageEvent', data);
     }
 }
