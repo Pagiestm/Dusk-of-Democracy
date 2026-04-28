@@ -971,10 +971,39 @@ export class Game {
       const nx = input.moveDirection.x / moveLen;
       const nz = input.moveDirection.y / moveLen;
       const pos = this.playerEntity.getPosition();
+      const dx = nx * speed * dt;
+      const dz = nz * speed * dt;
+
+      let finalX = pos.x + dx;
+      let finalZ = pos.z + dz;
+
+      // Raycast against buildings (same as PlayerController / host remote input)
+      const rigidbody = this.app.systems.rigidbody;
+      if (rigidbody) {
+        const radius = 0.5;
+        const origin = new pc.Vec3(pos.x, pos.y + 0.5, pos.z);
+        if (dx !== 0) {
+          const targetX = new pc.Vec3(
+            pos.x + dx + Math.sign(dx) * radius,
+            pos.y + 0.5,
+            pos.z,
+          );
+          if (rigidbody.raycastFirst(origin, targetX)) finalX = pos.x;
+        }
+        if (dz !== 0) {
+          const targetZ = new pc.Vec3(
+            pos.x,
+            pos.y + 0.5,
+            pos.z + dz + Math.sign(dz) * radius,
+          );
+          if (rigidbody.raycastFirst(origin, targetZ)) finalZ = pos.z;
+        }
+      }
+
       this.playerEntity.setPosition(
-        Math.max(-39, Math.min(39, pos.x + nx * speed * dt)),
+        Math.max(-39, Math.min(39, finalX)),
         pos.y,
-        Math.max(-39, Math.min(39, pos.z + nz * speed * dt)),
+        Math.max(-39, Math.min(39, finalZ)),
       );
     }
     if (input.aimDirection.x !== 0 || input.aimDirection.y !== 0) {
