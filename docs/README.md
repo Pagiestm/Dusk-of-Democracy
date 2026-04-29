@@ -49,6 +49,30 @@ Ce document liste les principales contributions de chaque membre du projet.
   - fix : timing du SFX de mort joueur (délai avant la musique game over)
   - fix : intégration audio compatible multijoueur (séquence game over centralisée host/client)
   - merge : résolution des conflits avec main (Game.ts, UIManager.ts, ui.css)
+- **27/04/2026**
+  - feat : intégration de la map ville depuis l'éditeur PlayCanvas avec collisions physiques
+  - feat : ajout des lampadaires PlayCanvas pour l'éclairage du mode nuit
+  - feat : ciel image + overlay nuit (remplace le bleu uni)
+  - chore : mise à jour visuelle de l'arène
+  - feat : système de highscore persistant via localStorage (issue #17)
+  - feat : toggle caméra top-down ↔ vue 3e personne
+  - feat : auto-aim avec compromis équilibrés (combat assist)
+  - fix : empêche l'animation de mort des ennemis de jouer deux fois
+  - feat : ajout du modèle punk masculin pour le Journaliste
+  - fix : ennemis qui passaient à travers les barrières routières
+  - feat : ajout du modèle féminin pour le Gauchiste (renommé depuis « Militant »)
+  - feat : ajout du Hazmat (ennemi tireur à distance) + modèle de projectile balle
+  - feat : refonte de `wall_builder` en véritable mur de terre
+  - feat : modèle d'explosion animée pour `bolivarian_blast`
+  - feat : modèle oiseau Twitter pour les projectiles `tweet_storm`
+  - feat : modèle livre pour les projectiles `executive_order`
+  - feat : `Sanctions` renommé en `Injures` (projectiles texte avec insultes aléatoires)
+  - feat : pause partagée en multi via touche ÉCHAP (état synchronisé entre joueurs)
+  - perf : throttling du trafic réseau pour réduire la latence côté client
+  - fix : envoi des inputs sur changement (au lieu de throttle) pour éviter le TP côté client
+  - fix : explosion animée affichée aussi côté client
+  - fix : scale d'explosion incohérent client/host corrigé
+  - fix : collisions host pour les joueurs distants + bumping joueur vs joueur
 
 ## 🛠️ Louis
 
