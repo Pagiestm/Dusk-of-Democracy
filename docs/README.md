@@ -7,11 +7,11 @@ Ce document liste les principales contributions de chaque membre du projet.
 ## 🧑‍💻 Théotime
 
 - **23/02/2026**
-  - refactor : suppression des données `WAVES` et intégration de la logique de vagues directement dans `WaveSystem`.
-  - feat : ajout des écrans de personnage, d'arme et de jeu avec contenu dynamique.
-  - feat : ajustement de la durée du cycle jour/nuit et implémentation de l'éclairage de la torche du joueur.
-  - feat : amélioration du visuel du cycle jour/nuit et des indicateurs UI.
-  - feat : implémentation de l'écran de sélection d'arme et mise à jour des définitions de personnages et d'armes.
+  - suppression des données `WAVES` et intégration de la logique de vagues directement dans `WaveSystem`.
+  - ajout des écrans de personnage, d'arme et de jeu avec contenu dynamique.
+  - ajustement de la durée du cycle jour/nuit et implémentation de l'éclairage de la torche du joueur.
+  - amélioration du visuel du cycle jour/nuit et des indicateurs UI.
+  - implémentation de l'écran de sélection d'arme et mise à jour des définitions de personnages et d'armes.
   - Merge de branche `main` (synchronisation).
 - **16/03/2026**
   - A aidé Lucas sur le game concept
@@ -26,6 +26,21 @@ Ce document liste les principales contributions de chaque membre du projet.
   - Amélioration de la fluidité côté client (prédiction de mouvement, interpolation des entités)
   - Correction de plusieurs bugs multijoueur (désynchronisation, affichage, joueurs morts)
   - Refactorisation de l'architecture serveur
+- **27/04/2026**
+  - correction des erreurs TypeScript et nettoyage de plusieurs points globaux du code.
+  - mise en ligne du frontend sur Vercel et du serveur multijoueur sur Render.
+  - amélioration de la fluidité du multijoueur pour se rapprocher du comportement solo.
+  - refonte de la gestion réseau avec une architecture orientée événements.
+    - suppression de l'ancienne interface `WorldSnapshot` et de son traitement monolithique dans `NetworkManager`.
+    - introduction de callbacks réseau dédiés pour le spawn des ennemis, les projectiles, les pickups, les effets de zone et la synchronisation d'état.
+    - adaptation de `CombatSystem` pour relayer les projectiles, les effets de mur et les effets de zone via le host.
+    - ajout d'un événement de spawn d'ennemi dans `WaveSystem`.
+    - ajout d'un événement de création d'XP dans `XPSystem` lors de la mort d'un ennemi.
+    - rendu de `isDead` public dans `Health` pour simplifier l'accès à l'état de mort.
+    - ajout de vérifications côté client dans le script `Wall` pour que les dégâts ne soient appliqués que par le host.
+  - amélioration des collisions de déplacement joueur avec raycasting.
+  - séparation de la gestion réseau en deux flux distincts pour les joueurs et le monde.
+
 
 ## 🛡️ Théo
 
@@ -114,6 +129,13 @@ Ce document liste les principales contributions de chaque membre du projet.
   - Terminer la création de la map
   - Ajout des collisions sur les bâtiments
   - Ajout des lumières 
+- **27/04/2026**
+  - refonte de la carte pour améliorer la lisibilité, la circulation et l'identité visuelle globale du niveau.
+  - ajout et intégration des assets pour les différents ennemis afin d'enrichir le vestiaire et varier les silhouettes en jeu.
+  - ajout et intégration de nouvelles animations pour rendre les ennemis et les personnages plus vivants et plus cohérents visuellement.
+  - ajout et intégration des armes et de leurs contenus visuels associés pour améliorer la clarté du gameplay.
+  - refactorisation globale du projet pour clarifier la structure, mieux organiser les ressources et faciliter les futures évolutions.
+  - travail de cohérence générale entre la map, les ennemis, les animations et les armes pour obtenir un rendu plus propre et plus homogène.
 
 > Pour toute nouvelle contribution, ajouter une ligne ci-dessous avec la date, l'auteur et le détail de la modification.
 
